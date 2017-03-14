@@ -1,0 +1,77 @@
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn5/segemehl/!svn/ver/392/libs/sufarray
+END
+sufmatch.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn5/segemehl/!svn/ver/1/libs/sufarray/sufmatch.h
+END
+multicharseq.c
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn5/segemehl/!svn/ver/392/libs/sufarray/multicharseq.c
+END
+sufarray.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn5/segemehl/!svn/ver/133/libs/sufarray/sufarray.h
+END
+charsequence.c
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn5/segemehl/!svn/ver/339/libs/sufarray/charsequence.c
+END
+falphabet.c
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn5/segemehl/!svn/ver/1/libs/sufarray/falphabet.c
+END
+multicharseq.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn5/segemehl/!svn/ver/392/libs/sufarray/multicharseq.h
+END
+mmchar.c
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn5/segemehl/!svn/ver/1/libs/sufarray/mmchar.c
+END
+sufmatch.c
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn5/segemehl/!svn/ver/1/libs/sufarray/sufmatch.c
+END
+charsequence.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn5/segemehl/!svn/ver/348/libs/sufarray/charsequence.h
+END
+falphabet.h
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn5/segemehl/!svn/ver/1/libs/sufarray/falphabet.h
+END
+mmchar.h
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn5/segemehl/!svn/ver/1/libs/sufarray/mmchar.h
+END
+sufarray.c
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn5/segemehl/!svn/ver/376/libs/sufarray/sufarray.c
+END

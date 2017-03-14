@@ -534,9 +534,9 @@ if [[ $nobmap -eq 0 ]]; then
 			o=$outdir/mapped/bwa/$(basename ${fastq1[$i]})
 			o=${o%.*}	
 			if [[ ${fastq2[0]} ]]; then
-				cmd+=("${BASH_ALIASES[bwa]} mem -t $threads $genome ${fastq1[$i]} ${fastq2[$i]} > $o.all\n")
+				cmd+=("${BASH_ALIASES[bwa]} mem -M -t $threads $genome ${fastq1[$i]} ${fastq2[$i]} > $o.all\n")
 			else 
-				cmd+=("${BASH_ALIASES[bwa]} mem -t $threads $genome ${fastq1[$i]} > $o.all\n")
+				cmd+=("${BASH_ALIASES[bwa]} mem -M -t $threads $genome ${fastq1[$i]} > $o.all\n")
 			fi
 			mappingbwa[$i]=$o.all
 		done

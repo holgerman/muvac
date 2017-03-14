@@ -1,0 +1,254 @@
+
+/*
+ *  match.c
+ *  replacement for kdmatch
+ *  it gets the seeds from kdseed.c,
+ *  it uses queryalign, matealign and
+ *  split align. the last three return a mapping_t
+ *  data structure
+ *
+ *  @author Steve Hoffmann
+ *  @email steve@bioinf.uni-leipzig.de
+ *  @date 12/21/2012 00:25:18 CET
+ *  
+ */
+
+/*-------------------------------- se_convert --------------------------------
+ *    
+ * @brief a small helper for bisulfite conversion
+ * @author Steve Hoffmann 
+ *   
+ */
+
+  char **
+se_convert (char **out, char *in, unsigned int len, segemehl_t *nfo, char type)
+{        
+  char **out;
+
+  if (nfo->bisulfite){
+    FREEMEMORY(space, out[1]);
+    out[0] = ALLOCMEMORY(space, NULL, char, len+1);
+    memmove(out[0], in, len+1);
+    out[1] = charIUPACcomplement(space, out[0], matelen);
+    bl_convertBisulfite(out[0], len, nfo->bisulfite, type);
+    bl_convertBisulfite(out[1], len, nfo->bisulfite, type);
+  }
+
+  return out;
+}
+
+
+void
+match(void *space, Suffixarray *s, fasta_t *reads, 
+    segemehl_t *nfo) {
+
+  //initialize data for stats and bv
+  enctab = encodetab(nfo->seq->map, nfo->seq->mapsize);
+  dim = reads->maxlen+1000;
+  maxL = nfo->maxinsertsize;
+
+  if(bl_fastaHasMate(reads)) {
+    dim += nfo->maxinsertsize;
+  }
+
+  dim += 2*((reads->maxlen-ceil((nfo->accuracy*reads->maxlen)/100))+4);
+  wordno = (reads->maxlen/BITVECTOR_WORDSIZE)+1; 
+
+  D = ALLOCMEMORY(space, NULL, bitvector, 2*(dim+1));
+  Mv = &D[dim+1];
+
+  for(i=0; i <= dim; i++) {
+    D[i] = initbitvector(space, wordno*BITVECTOR_WORDSIZE);
+    Mv[i] = initbitvector(space, wordno*BITVECTOR_WORDSIZE);
+  }  
+
+  karlinunitcostpp(space, &stats.lambda, &stats.H, &stats.K);
+
+  //iter the reads
+  for(k=0; k < reads->noofseqs; k++) {
+    //progress bar   
+    if(!nfo->mute) se_updateProgressBar(k, nfo);
+    //clipping
+    se_clip(space, reads, k, nfo);
+    //get the read len and ...
+    len = bl_fastaGetSequenceLength(reads, k);
+    //check the minium length
+    if(len >= nfo->minsize) {
+      //get the query (and mate) and convert for bisulfite if necessary
+      seqs[0] = bl_fastaGetSequence(reads, k);
+      seqs[1] = charIUPACcomplement(space, seqs[0], len);
+      stems[0] = NULL; stems[1] = NULL; 
+      b0[0] = NULL; b0[1] = NULL;
+      if(bl_fastaHasMate(reads)){
+        matelen = bl_fastaGetMateLength(reads, k);
+        maxE = matelen-ceil((nfo->accuracy*matelen)/100);
+        mateseqs[0] = bl_fastaGetMate(reads, k);
+        mateseqs[1] = charIUPACcomplement(space, mateseqs[0], matelen); 
+        matestems[0] = NULL; matestems[1] = NULL;
+        mateb0[0] = NULL; mateb0[1] = NULL;
+      }
+//      if (nfo->bisulfite){   
+        se_convert(seqs, bl_fastaGetSequence(reads,k), len, nfo, 1);
+        //convert for seed search
+        //seqs[0] = ALLOCMEMORY(space, NULL, char, len+1);
+        //memmove(seqs[0], bl_fastaGetSequence(reads, k), len+1);
+        //bl_convertBisulfite(seqs[0], len, nfo->bisulfite, 1);
+        //bl_convertBisulfite(seqs[1], len, nfo->bisulfite, 1);
+        if(bl_fastaHasMate(reads)) {
+          //convert for direct mate alignment with bv
+          se_convert(mateseqs, bl_fastaGetMate(reads,k), matelen, nfo, 0);
+  //        mateseqs[0] = ALLOCMEMORY(space, NULL, char, matelen+1);
+  //        memmove(mateseqs[0], bl_fastaGetMate(reads, k), matelen+1);
+  //        bl_convertBisulfite(mateseqs[0], matelen, nfo->bisulfite, 0);
+  //        bl_convertBisulfite(mateseqs[1], matelen, nfo->bisulfite, 0);
+        }
+//      }
+      //init jumps
+      if (nfo->jump == 0) {
+        jump = floor(len/75) * 2;
+        jump = (jump > 0) ? jump : 1;
+      } else {
+        jump = nfo->jump;
+      }
+      /* restrict search to one strand */
+      for (u = 0; u < 2; u++){
+        /* nfo->strand == 1 : search only on plus strand
+         * => init stems[1] as empty
+         * nfo->strand == 2 : search only on minus strand
+         * => init stems[0] as empty
+         * Note: empty but initialized stems are ignored
+         * in function kdbest
+         */
+        if (nfo->strand == 2 - u){	 
+          stems[u] = ALLOCMEMORY(space, NULL, matchstem_t, len);
+          for (i = 0; i < len; i++){
+            stems[u][i].branches = NULL;
+            stems[u][i].noofbranches = 0;
+          }
+        }
+      }
+
+      if (nfo->bestonly && countNonMatchingChars(seqs[0], len) <= nfo->k_p){
+        kdbest(space, s, seqs, len, nfo->s_ext, nfo->p_mis,
+            nfo->Xoff, nfo->k_p, stems, b0);
+      }
+
+      if (stems[0] == NULL){
+        stems[0]=kdseeds(space, s, seqs[0], len, jump, nfo->s_ext, nfo->p_mis,
+            nfo->Xoff, nfo->k_p, b0[0]);
+      }
+
+      if (stems[1] == NULL){
+        stems[1]=kdseeds(space, s, seqs[1], len, jump, nfo->s_ext, nfo->p_mis,
+            nfo->Xoff, nfo->k_p, b0[1]);
+      }
+
+      /* convert for alignment */
+//      if (nfo->bisulfite){
+//        FREEMEMORY(space, seqs[1]);
+        
+        se_convert(seqs, bl_fastaGetSequence(reads,k), len, nfo, 0);
+        
+ //       memmove(seqs[0], bl_fastaGetSequence(reads, k), len+1);
+ //       seqs[1] = charIUPACcomplement(space, seqs[0], len);
+ //       bl_convertBisulfite(seqs[0], len, nfo->bisulfite, 0); 
+//        bl_convertBisulfite(seqs[1], len, nfo->bisulfite, 0); 
+      }
+      //filter the seeds
+      seeds = bl_getGoodSeeds(stems, len, s->numofsuffixes, &stats, nfo);
+      //map them
+      maps = bl_MatchStemAlign(s, nfo->seq, seqs, len, seeds, nfo, enctab, D);
+      //now go check the mates
+      if (bl_fastaHasMate(reads)) {
+        tmp = bl_matealign(maps, nfo->seq, mateseqs, matelen, maxE, enctab, D, maxL);
+        bl_removeMapping(maps);
+        maps = tmp;
+        //did the attempt fail?
+        if(!bl_isPairedMapping(maps)) {
+          //set up the heuristics for jumping seeds
+          if (nfo->jump == 0) {
+            jump = floor(matelen/75) * 2;
+            jump = (jump > 0) ? jump : 1;
+          } else {
+            jump = nfo->jump;
+          }
+
+          /* convert for mate seed search */
+          if (nfo->bisulfite){
+            FREEMEMORY(space, mateseqs[1]);
+
+        se_convert(mateseqs, bl_fastaGetMate(reads,k), matelen, nfo, 0);
+
+//            memmove(mateseqs[0], bl_fastaGetMate(reads, k), matelen+1);
+//            mateseqs[1] = charIUPACcomplement(space, mateseqs[0], matelen);
+//            bl_convertBisulfite(mateseqs[0], matelen, nfo->bisulfite, 1);
+//            bl_convertBisulfite(mateseqs[1], matelen, nfo->bisulfite, 1);
+          } 
+
+          matestems[0] = NULL; matestems[1] = NULL;
+          mateb0[0] = NULL; mateb0[1] = NULL;
+
+          /* restrict search to one strand */
+          for (u = 0; u < 2; u++){
+            /* nfo->strand == 1 : search only on plus strand
+             * => search for mate only on minus strand
+             * => init stems[0] as empty
+             * nfo->strand == 2 : search only on minus strand
+             * => search for mate only on plus strand
+             * => init stems[1] as empty
+             * Note: empty but initialized stems are ignored
+             * in function kdbest
+             */
+            if (nfo->strand == u + 1){
+              matestems[u] = ALLOCMEMORY(space, NULL, matchstem_t, matelen);
+              for (i = 0; i < matelen; i++){
+                matestems[u][i].branches = NULL;
+                matestems[u][i].noofbranches = 0;
+              }
+            }
+          }
+
+          if (matestems[0] == NULL){
+            matestems[0]=kdseeds(space, s, mateseqs[0], matelen, jump, nfo->s_ext, 
+                nfo->p_mis, nfo->Xoff, nfo->k_p, mateb0[0]);
+          }
+          if (matestems[1] == NULL){
+            matestems[1]=kdseeds(space, s, mateseqs[1], matelen, jump, nfo->s_ext, 
+                nfo->p_mis, nfo->Xoff, nfo->k_p, mateb0[1]);
+          }
+
+          /* convert query for mate alignment */
+          if (nfo->bisulfite){
+            FREEMEMORY(space, mateseqs[1]);
+            se_convert(mateseqs, bl_fastaGetMate(reads,k), matelen, nfo, 0);
+            
+//            memmove(mateseqs[0], bl_fastaGetMate(reads, k), matelen+1);
+//            mateseqs[1] = charIUPACcomplement(space, mateseqs[0], matelen);
+//            bl_convertBisulfite(mateseqs[0], matelen, nfo->bisulfite, 0);
+//            bl_convertBisulfite(mateseqs[1], matelen, nfo->bisulfite, 0);
+          }   
+
+          //filter the seeds
+          mateseeds = bl_getGoodSeeds(matestems, matelen, s->numofsuffixes, &stats, nfo);
+          //align mate to the seeds
+          matemaps = bl_MatchStemAlign(s, nfo->seq, mateseqs, matelen, mateseeds, nfo, enctab, D);
+          //now go check the query
+          tmp = bl_matealign(matemaps, nfo->seq, seqs, len, maxE, enctab, D, maxL);
+          bl_removeMapping(matemaps);
+          matemaps = tmp;
+          //attempt failed again
+          if(!bl_isPairedMapping(maps)) {
+            //pair mate maps or copy singletons to matemap
+            pairMateMapping(maps, matemaps, nfo->maxinsertsize);
+            bl_removeMapping(matemaps);
+          } else {
+            bl_removeMapping(maps);
+            maps = matemaps;
+          } 
+        }
+      }
+
+      //report maps or dump unmatched elems
+    }
+  }
+}

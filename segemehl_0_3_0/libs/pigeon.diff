@@ -1,0 +1,90 @@
+32d31
+< #include "pigeon.h"
+228,238c227,229
+<       char pigeonsearch = 0;
+<       if (nfo->bestonly && countNonMatchingChars(seqs[0], len) <= 1){
+<         maps = pigeon(space, s, nfo->seq, seqs, quals, len, 2, bl_fastaGetDescription(reads, k),
+<             enctab, D, 0);
+<        /* if(bl_hasQueryMapping(maps)) {
+<           fprintf(stdout, "found pigeon alignment\n");
+<         } else { 
+<           fprintf(stdout, "did not find pigeon alignment\n");
+<         }
+<         */  
+<         pigeonsearch = 1;
+---
+>       if (nfo->bestonly && countNonMatchingChars(seqs[0], len) <= nfo->k_p){
+>           kdbest(space, s, seqs, len, nfo->s_ext, nfo->p_mis,
+>             nfo->Xoff, nfo->k_p, stems, b0);
+241,252c232,235
+<       if(!pigeonsearch || !bl_hasQueryMapping(maps)) { 
+< 
+<         if(pigeonsearch) { 
+<         //remove the old map, a new one will be generated
+<         bl_removeMappingSet(maps);
+<         FREEMEMORY(space, maps);
+<         }
+< 
+<         if (stems[0] == NULL){
+<           stems[0]=kdseeds(space, s, seqs[0], len, jump, nfo->s_ext, nfo->p_mis,
+<               nfo->Xoff, nfo->k_p, b0[0], nfo->nosuflinks);
+<         }
+---
+>       if (stems[0] == NULL){
+>         stems[0]=kdseeds(space, s, seqs[0], len, jump, nfo->s_ext, nfo->p_mis,
+>             nfo->Xoff, nfo->k_p, b0[0], nfo->nosuflinks);
+>       }
+254,257c237,240
+<         if (stems[1] == NULL){
+<           stems[1]=kdseeds(space, s, seqs[1], len, jump, nfo->s_ext, nfo->p_mis,
+<               nfo->Xoff, nfo->k_p, b0[1], nfo->nosuflinks);
+<         }
+---
+>       if (stems[1] == NULL){
+>         stems[1]=kdseeds(space, s, seqs[1], len, jump, nfo->s_ext, nfo->p_mis,
+>             nfo->Xoff, nfo->k_p, b0[1], nfo->nosuflinks);
+>       }
+259,268c242,251
+<         /* convert for alignment */
+<         //se_convert(seqs, bl_fastaGetSequence(reads,k), len, nfo, 0);
+<         /* convert for alignment */
+<         if (nfo->bisulfite){
+<           FREEMEMORY(space, seqs[1]);
+<           memmove(seqs[0], bl_fastaGetSequence(reads, k), len+1);
+<           seqs[1] = charIUPACcomplement(space, seqs[0], len);
+<           bl_convertBisulfite(seqs[0], len, nfo->bisulfite, 0); 
+<           bl_convertBisulfite(seqs[1], len, nfo->bisulfite, 0); 
+<         }
+---
+>       /* convert for alignment */
+>       //se_convert(seqs, bl_fastaGetSequence(reads,k), len, nfo, 0);
+>       /* convert for alignment */
+>       if (nfo->bisulfite){
+>         FREEMEMORY(space, seqs[1]);
+>         memmove(seqs[0], bl_fastaGetSequence(reads, k), len+1);
+>         seqs[1] = charIUPACcomplement(space, seqs[0], len);
+>         bl_convertBisulfite(seqs[0], len, nfo->bisulfite, 0); 
+>         bl_convertBisulfite(seqs[1], len, nfo->bisulfite, 0); 
+>       }
+271,276c254,258
+<         //filter the seeds
+<         seeds = bl_getGoodSeeds(stems, len, s->numofsuffixes, &stats, nfo);
+<         //map them
+<         maps = bl_seedAlign(s, nfo->seq, seqs, quals, len, 
+<             bl_fastaGetDescription(reads, k), seeds, nfo, enctab, D, 0);
+<       }
+---
+>       //filter the seeds
+>       seeds = bl_getGoodSeeds(stems, len, s->numofsuffixes, &stats, nfo);
+>       //map them
+>       maps = bl_seedAlign(s, nfo->seq, seqs, quals, len, 
+>           bl_fastaGetDescription(reads, k), seeds, nfo, enctab, D, 0);
+323,326d304
+<       //tmp = pigeonmate(space, maps, s, nfo->seq, mateseqs, matequals, 
+<       //    matelen, 3, bl_fastaGetMateDescription(reads, k), enctab, D, 1); 
+< 
+<       
+494c472
+<     if(nfo->split && stems[0] && len >= nfo->minsize && (!bl_hasQueryMapping(maps) ||
+---
+>     if(nfo->split && len >= nfo->minsize && (!bl_hasQueryMapping(maps) ||

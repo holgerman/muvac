@@ -1,0 +1,1 @@
+ rm -Rf libs; mkdir libs; cp -R ../samout/libs/* libs/; rm libs/*~; rm -Rf libs/old; rm libs/*save*; rm libs/*beforecleanup*; rm libs/sufarray/*~; make clean; make
