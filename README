@@ -19,7 +19,7 @@ echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
 wget https://github.com/koriege/muvac/archive/v0.1.0.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.0.zip
+unzip v0.1.0.zip
 7) enter the muvac directory
 cd muvac-0.1.0
 8) install required tools for muvac - ATTENTION: make sure to use Java 8 as your default
