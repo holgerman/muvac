@@ -1,49 +1,83 @@
+### INFO
+muvac is a fully multithreaded pipeline to call, merge and annotate germline variances 
+- from RAW sequencing data in FastQ format,
+- trimmed using Trimmomatic,
+- corrected using Rcorrector,
+- mapped by Segemehl, TopHat2, BWA,
+- using Freebayes, HaplotypeCaller, MuTect2, Samtools, Platypus
+
 ### INSTALLATION
-1) you need to be root to install library dependencies
+1) you need to be root to install library dependencies, unless already present (to test this, just go on with step 2)
 sudp apt-get update
-sudo apt-get install cmake install git g++ gcc make openjdk-8-jdk r-base r-base-dev python-dev unzip zlib1g-dev libncurses5-dev libncursesw5-dev libexpat1-dev
-2) create a directory for muvac installation and export MUVAC variable assigned to it
-mkdir -p $PWD/tools
-export MUVAC=$PWD/tools
-3) store exported MUVAC variable permanently to ensure that muvac can always find its tools
+sudo apt-get install cmake install git g++ gcc make openjdk-8-jdk python-dev unzip zlib1g-dev libncurses5-dev libncursesw5-dev libexpat1-dev
+2) create a directory for muvac tools installation, which can changed here (default is current working directory with absolute path $PWD)
+mkdir -p $PWD/muvactools
+3) create a shell variable MUVAC assigned to your previous defined installation directory
+export MUVAC=$PWD/muvactools
+4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
-4) install muvac into $MUVAC directory
-muvac -i all
+5) download the latest muvac release from https://github.com/koriege/muvac/releases
+wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.0.zip
+6) extract the downloaded muvac release
+unzip muvac-v0.1.0.zip
+7) enter the muvac directory
+cd muvac-0.1.0
+8) install required tools for muvac - ATTENTION: make sure to use Java 8 as your default
+./muvac -i all
+
+### DOWNLOAD HG19/GRCh37.p13 and dbSNP vcf
+1) create a genome directory
+mkdir -p $PWD/genomes
+2) download hg19 genome and corresponding dbSNP vcf into your genomes directory
+./dlhg19 $PWD/genomes
 
 ### RUN
-./muvac -v -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
-adapt and use the terminal command above
-calling for help? execute muvac -h
-example for multiple patients data to be processed in parallel:
-muvac -a CTGTCTCTTATACACATCT -1 patient1_1.fq,patient2_1.fq -2 patient1_2.fq,patient2_2.fq -g genomes/hg19.fa -o results -l results/run.log
-### ATTENTION
-make sure you have a dbSNP vcf file next to your genome.fa file named genome.fa.vcf
-muvac comes with hg19.fa and corresponding vcf from ftp://ftp.ncbi.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/VCF/GATK/common_all_20161121.vcf.gz
+- make sure to have your genome and dbSNP vcf file in the same directory
+- make sure your genome file ends with '.fa' and your dbSNP file ends with '.fa.vcf'
+- make sure the file name prefixes of your genome and dbSNP file are equal (e.g. hg19.fa and hg19.fa.vcf)
+- make sure the fasta headers in your genome are in this order and termed '>chrM' '>chr1' ... '>chr22' '>chrX' '>chrY'
+=> running dlhg19 from the DOWNLOAD section will do this for you
+1) calling for help?
+./muvac -h
+2) adapt and use the terminal command below
+./muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
 
-### RUN INFO
-a comprehensive log file will be created in your output directory at <results>/run.log
-using verbose option -v will additionally print full log to terminals stdout
+### INFO: RUN
+- a comprehensive logging file 'run.log' file will be created in your output directory, unless defined otherwise
+- using the verbose option '-v' will additionally print full log to terminals stdout
+- example run for multiple patients data to be processed in parallel
+./muvac -1 patient1_1.fq,patient2_1.fq -2 patient1_2.fq,patient2_2.fq -g genomes/hg19.fa -o results -l results/run.log
+
+### RUN IN BACKGROUND
+1) start a screen with a unique name
+screen -S myMUVACrun
+2) run muvac
+3) detach the screen by pressing all 3 keys 'ctr+a+d'
+4) list screens running in background
+screen -ls
+4) resume a screen 
+screen -r myMUVACrun
 
 ### RESULTS
-results can be found in the vcf directory: <results>/vcf/<mapper>/*.<caller>.vcf 
-merged results are named <results>/vcf/<mapper>/*.merged.vcf
-callers: freebayes, haplotypecaller, mutect2, samtools, platypus
+- results can be found in the vcf/(segemehl|tophat2|bwa) directories
+- merged results are named *.merged.vcf
+
+### INFO: MERGED RESULTS
+- muvac returns the score columns of the first caller in alphabetic order, which is freebayes unless deactivated
+- '*.reduced.vcf' files contain only the info column of the first caller in alphabetic order, which is freebayes unless deactivated
+
+### INFO: MULTIALLELIC REPORTS
+- bcftools-norm is used to split them into single reports with related genotype (GT), genotype quality (GQ) and coverage (DP)
+=> muvac returns the best report according to GQ and DP
 
 ### INTERMEDIATE RESULTS (in processing order)
-fastqc) find raw read quality staistics at <results>/qualities/*
-fastx_toolkit) find phred64 to phred33 quality converted raw reads at <results>/converted/*
-trimmomatic)  find quality trimmed reads at <results>/trimmed/*
-rcorrector) find error corrected reads at <results>/rawcorrected/*
-segemehl|tophat2|bwa) find sorted mapping data at <results>/mapped/<mapper>/*.bam
-picard) find duplicate marked mapping data at <results>/noduplicates/<mapper>/*.bam
-gatk) find relaigned and reaclibrated mapping data at <results>/errorcorrected/<mapper>/*.reordered.bam
-
-### HANDLING OF MULTIALLELIC REPORTS
-bcftools-norm is used to split them into single reports with related genotype (GT), genotype quality (GQ) and coverage (DP)
-muvac returns the best report according to 1) GQ and 2) DP
-
-### HANDLING OF SCORES FOR MERGED OUTPUT
-muvac returns the score of the first caller in alphabetic order, which is freebayes if not deactivated
+- qualities directory: raw read quality statistics by FastQC
+- converted directory: phred64 to phred33 quality converted raw reads by fastx_toolkit
+- trimmed directory: quality trimmed reads by Trimmomatic
+- rawcorrected directory: error corrected reads by Rcorrector
+- mapped/(segemehl|tophat2|bwa) directory: sorted mapping data '*.bam' by Segemehl|TopHat2|BWA
+- noduplicates/(segemehl|tophat2|bwa) directory: duplicate marked mapping data '*.bam' by Picard 
+- errorcorrected/(segemehl|tophat2|bwa) directory: relaigned and reaclibrated mapping data '*.reordered.bam' by GATK
 
 ### GENERAL CALLER PARAMETER
 if adjustable, all callers are contrained by
@@ -55,5 +89,5 @@ max variances = all
 downsampling = off
 
 ### AUTHOR
-# konstantin riege
-# konstantin{a}bioinf{.}uni-leipzig{.}de
+Konstantin Riege
+konstantin{a}bioinf{.}uni-leipzig{.}de

@@ -6,13 +6,17 @@ trap "trap - SIGTERM && kill -PIPE -- -$$ &> /dev/null" INT TERM SIGINT SIGTERM 
 # set -e
 
 usage() {
-	echo "synopsis"
+	echo "SYNOPSIS"
 	echo $(basename $0)" -1 [PATH] -g [PATH] -o [PATH]"
-	echo "description"
-	echo $(basename $0)" a multithreaded caller for germline variances"
-	echo "options"
+	echo ""
+	echo "DESCRIPTION"
+	echo $(basename $0)" is a multiple variance caller pipeline for germline variances"
+	echo "v0.1.0"
+	echo ""
+	echo "INSTALLATION"
 	echo "-i | --install all               : installation to exported directory: export MUVAC=<PATH> - default: $PWD/tools"
 	echo ""
+	echo "OPTIONS"
 	echo "-1 | --fastq1 [path,path,..]     : fastq input - single or first pair, comma seperated"
 	echo "-2 | --fastq2 [path,path,..]     : fastq input - optional. second pair, comma seperated"
 	echo "-g | --genome [path]             : genome fasta with suffig '.fa'"
@@ -23,6 +27,7 @@ usage() {
 	echo "-h | --help                      : prints this message"
 	echo "-v | --verbose                   : enable verbose mode"
 	echo "-r | --remove                    : finally remove intermediate results and temporary files"
+	echo "-s | --split                     : run Segemehl mapper in split mode with max-insert size 30k"
 	echo ""
 	echo "-no-pre   | --no-preprocessing   : disables quality analysis, adapter clipping, error correction"
 	echo "-no-trim  | --no-trimming        : disables quality trimming"
@@ -35,28 +40,16 @@ usage() {
 	echo "-no-fb    | --no-freebayes       : disables variance caller Freebayes"
 	echo "-no-st    | --no-samtools        : disables variance caller Samtools/Bcftools"
 	echo "-no-pp    | --no-platypus        : disables variance caller Platypus"
-	echo ""
-	echo "dev opts: -Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge -split"
+	#echo "-Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge"
 	exit 0
 }
 
 install () {
-	if [[ $make == "all" ]] || [[ $make == "vcfix" ]]; then
-		echo ":INFO: installing vcfix"
-		cp $(dirname $0)/vcfix.pl $tooldir
-		if [[ $? -gt 0 ]]; then
-		 	echo ":ERROR: vcfix installation failed"
-		 	return 1
-		fi
-	fi
-
-	if [[ $make == "all" ]] || [[ $make == "vcfmerge" ]]; then
-		echo ":INFO: installing vcfmerge"
-		cp $(dirname $0)/vcfmerge.pl $tooldir
-		if [[ $? -gt 0 ]]; then
-		 	echo ":ERROR: vcfmerge installation failed"
-		 	return 1
-		fi
+	if [[ $make == "all" ]]; then
+		cp $muvacdir/muvac $tooldir
+		cp $muvacdir/dlh19 $tooldir
+		cp $muvacdir/vcfmerge.pl $tooldir
+		cp $muvacdir/vcfix.pl $tooldir
 	fi
 
 	if [[ $make == "all" ]]; then
@@ -255,7 +248,7 @@ install () {
 		# 	echo "segemehl installation failed"
 		# 	return 1
 		# fi
-		cp -r $(dirname $0)/segemehl_0_3_0 $tooldir
+		cp -r $muvacdir/segemehl_0_3_0 $tooldir
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: segemehl installation failed"
 			return 1
@@ -492,9 +485,9 @@ if [[ $notmap -eq 0 ]]; then
 		o=$outdir/mapped/tophat/$(basename ${fastq1[$i]})
 		o=${o%.*}
 		if [[ ${fastq2[0]} ]]; then #platypus dont like mapping ranges over c limits of short int (32767)
-			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --max-multihits 9999999 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} ${fastq2[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
+			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} ${fastq2[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
 		else 
-			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --max-multihits 9999999 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
+			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
 		fi			
 		mappingtophat[$i]=$o.unsorted
 	done
@@ -1011,6 +1004,28 @@ if [[ $Smerge -eq 0 ]]; then
 	done
 	#enable dev skip option if already done
 	[[ $Smerge -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+
+	for f in ${mappingsegemehl[@]}; do
+        o=$(basename $f)
+        o=$outdir/vcf/segemehl/${o%.*}
+        export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
+        perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
+	  	${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+	done
+	for f in ${mappingtophat[@]}; do
+        o=$(basename $f)
+        o=$outdir/vcf/tophat/${o%.*}
+	 	export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
+        perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
+	  	${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+	done
+	for f in ${mappingbwa[@]}; do
+        o=$(basename $f)
+        o=$outdir/vcf/bwa/${o%.*}
+	 	export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
+        perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
+	  	${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+	done
 fi
 
 	echo ":INFO: fin"
@@ -1018,11 +1033,12 @@ fi
 
 ### main
 pwd=$PWD
+muvacdir=$(dirname $0)
 fq1=''
 fq2=''
 genome=''
 threads=$( (sleep 1; echo 1) | script -e -q -c "stty rows 100; top -n 2" /dev/null | grep -E 'Cpu[0-9]+' | awk '$3+$5<40{print}' | wc -l)
-outdir=$PWD/results
+outdir=$pwd/results
 help=0
 verbose=0
 tooldir=$MUVAC
@@ -1085,6 +1101,7 @@ checkopt (){
 	-no-pre | --no-preprocessing) noprep=1; return 0;;
 	-no-trim | --no-trimming) notrim=1; return 0;;
 	-r | --r | -remove | --remove) remove=1; return 0;;
+	-s | --s | -split | --split) split=1; return 0;;
 	-Sq) Sq=1; return 0;;
 	-Sa) Sa=1; return 0;;
 	-Scor) Scor=1; return 0;;
@@ -1107,7 +1124,6 @@ checkopt (){
 	-Sst) Sst=1; return 0;;
 	-Spp) Spp=1; return 0;;
 	-Smerge) Smerge=1; return 0;;
-	-split) split=1; return 0;;
 	esac
 	if [[ ! $arg =~ ^- ]]; then
 		case $opt in
@@ -1141,7 +1157,7 @@ if [[ $help -gt 0 ]]; then
 	usage
 fi
 if [[ ! $tooldir ]]; then
-	tooldir=$(cd $(dirname $0) && echo $PWD && cd $pwd)/tools
+	tooldir=$(cd $muvacdir && echo $PWD && cd $pwd)/tools
 fi
 
 if [[ $make ]]; then
@@ -1153,7 +1169,7 @@ if [[ $make ]]; then
 	else
 		progress &
 		userlog $tooldir/install.log &
-		install &> $tooldir/install.log
+		install &>> $tooldir/install.log
 		excode=${PIPESTATUS[0]}
 	fi
 	if [[ $excode -gt 0 ]]; then
@@ -1166,11 +1182,11 @@ fi
 
 # alias definitions for system calls
 tool=$(ls $tooldir/vcfix.pl)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i vcfix"; exit 1; fi
+if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i all"; exit 1; fi
 alias vcfix=$tool
 
 tool=$(ls $tooldir/vcfmerge.pl)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i vcfmerge"; exit 1; fi
+if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i all"; exit 1; fi
 alias vcfmerge=$tool
 
 tool=$(ls $tooldir/Trimmomatic-*/trimmomatic-*.jar | sort -r | head -1)
