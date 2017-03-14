@@ -492,9 +492,9 @@ if [[ $notmap -eq 0 ]]; then
 		o=$outdir/mapped/tophat/$(basename ${fastq1[$i]})
 		o=${o%.*}
 		if [[ ${fastq2[0]} ]]; then #platypus dont like mapping ranges over c limits of short int (32767)
-			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --max-multihits 9999999 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} ${fastq2[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
+			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} ${fastq2[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
 		else 
-			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --max-multihits 9999999 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
+			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
 		fi			
 		mappingtophat[$i]=$o.unsorted
 	done
