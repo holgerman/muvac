@@ -1383,7 +1383,7 @@ for i in $(seq 1 $#); do
 		checkopt ${!j} ${!i}
 	fi
 done
-exit
+
 if [[ $help -gt 0 ]]; then
 	usage
 fi
