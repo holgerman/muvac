@@ -1,5 +1,5 @@
 ### INFO
-muvac is a fully multithreaded pipeline to call, merge and annotate germline variances 
+muvac is a fully multithreaded pipeline to call, merge and annotate germline variants
 - from RAW sequencing data in FastQ format,
 - trimmed using Trimmomatic,
 - corrected using Rcorrector,
