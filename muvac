@@ -44,6 +44,43 @@ usage() {
 }
 
 install () {
+	if [[ $(make -h &> /dev/null; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: make"
+		return 1
+	fi
+	if [[ $(cmake -h &> /dev/null; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: cmake"
+		return 1
+	fi
+	if [[ $(git --version &> /dev/null; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: git"
+		return 1
+	fi
+	if [[ $(g++ -v &> /dev/null; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: g++"
+		return 1
+	fi
+	if [[ $(gcc -v &> /dev/null; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: gcc"
+		return 1
+	fi
+	if [[ $(unzip -h &> /dev/null; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: unzip"
+		return 1
+	fi
+	if [[ $(python --version 2>&1 | grep -c '2.7') -ne 1 ]]; then
+		echo ":ERROR: dependency missing: python 2.7"
+		return 1
+	fi
+	if [[ ! -e /usr/include/python2.7/Python.h ]]; then
+		echo ":ERROR: dependency missing: python-dev"
+		return 1
+	fi
+	if [[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]]; then
+		echo ":ERROR: dependency missing: java 8"
+		return 1
+	fi
+
 	if [[ $make == "all" ]]; then
 		cp $muvacdir/muvac $tooldir
 		cp $muvacdir/dlh19 $tooldir
@@ -60,8 +97,8 @@ install () {
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && make && make install
 		if [[ $? -gt 0 ]]; then
-		 	echo ":ERROR: ncurses installation failed"
-		 	return 1
+			echo ":ERROR: ncurses installation failed"
+			return 1
 		fi
 
 		echo  ":INFO: installing gtextutils"
@@ -306,6 +343,7 @@ install () {
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "picard" ]]; then
+		echo ":INFO: installing picard"
 		mkdir -p $tooldir/picard-2.8.2
 		url='https://github.com/broadinstitute/picard/releases/download/2.8.2/picard-2.8.2.jar'
 		wget -q $url -O $tooldir/picard-2.8.2/picard.jar
@@ -1119,7 +1157,11 @@ if [[ $Smerge -eq 0 ]]; then
 				return 1
 			fi
 			sed -i '$ d' $o.merged.vcf
-			cmd+=("${BASH_ALIASES[vcfmerge]} "$(ls $o*.vcf | grep -v merged)" "$(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}')" >> $o.merged.vcf")
+			${BASH_ALIASES[vcfmerge]} $(ls $o*.vcf | grep -v merged) $(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}') >> $o.merged.vcf
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf merge failed"
+				return 1
+			fi
 		fi
 	done
 	for f in ${mappingtophat[@]}; do
@@ -1140,7 +1182,11 @@ if [[ $Smerge -eq 0 ]]; then
 				return 1
 			fi
 			sed -i '$ d' $o.merged.vcf
-			cmd+=("${BASH_ALIASES[vcfmerge]} "$(ls $o*.vcf | grep -v merged)" "$(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}')" >> $o.merged.vcf")
+			${BASH_ALIASES[vcfmerge]} $(ls $o*.vcf | grep -v merged) $(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}') >> $o.merged.vcf
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf merge failed"
+				return 1
+			fi
 		fi
 	done
 	for f in ${mappingbwa[@]}; do
@@ -1161,15 +1207,13 @@ if [[ $Smerge -eq 0 ]]; then
 				return 1
 			fi
 			sed -i '$ d' $o.merged.vcf
-			cmd+=("${BASH_ALIASES[vcfmerge]} "$(ls $o*.vcf | grep -v merged)" "$(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}')" >> $o.merged.vcf")
+			${BASH_ALIASES[vcfmerge]} $(ls $o*.vcf | grep -v merged) $(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}') >> $o.merged.vcf
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf merge failed"
+				return 1
+			fi
 		fi
 	done
-	#enable dev skip option if already done
-	[[ $Smerge -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: vcf merge failed"
-		return 1
-	fi
 
 	for f in ${mappingsegemehl[@]}; do
 		o=$(basename $f)
@@ -1181,6 +1225,7 @@ if [[ $Smerge -eq 0 ]]; then
 			return 1
 		fi
 		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.reduced.vcf > $o.merged.reduced.vcf.gz
 	done
 	for f in ${mappingtophat[@]}; do
 		o=$(basename $f)
@@ -1192,6 +1237,7 @@ if [[ $Smerge -eq 0 ]]; then
 			return 1
 		fi
 		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.reduced.vcf > $o.merged.reduced.vcf.gz
 	done
 	for f in ${mappingbwa[@]}; do
 		o=$(basename $f)
@@ -1203,6 +1249,7 @@ if [[ $Smerge -eq 0 ]]; then
 			return 1
 		fi
 		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.reduced.vcf > $o.merged.reduced.vcf.gz
 	done
 fi
 
@@ -1318,11 +1365,12 @@ checkopt (){
 		-a | --a | -adapter | --adapter) adapter=$arg;;
 		-i | --i | -install | --install) make=$arg;;
 		-l | --l | -log | --log) log=$arg;;
-		*$(basename $0) | -*) echo "illegal option $arg"; exit 1;; 
+		*$(basename $0)) echo "illegal option $arg"; exit 1;;
+		-*) echo "illegal option $opt"; exit 1;; 
 		*) echo "illegal option $arg"; exit 1;;
 		esac
 	else
-		echo "illegal option $opt or assignment for $opt"
+		echo "illegal assignment $arg for option $opt"
 		exit 1
 	fi
 }
@@ -1335,7 +1383,7 @@ for i in $(seq 1 $#); do
 		checkopt ${!j} ${!i}
 	fi
 done
-
+exit
 if [[ $help -gt 0 ]]; then
 	usage
 fi

@@ -7,9 +7,9 @@ muvac is a fully multithreaded pipeline to call, merge and annotate germline var
 - using Freebayes, HaplotypeCaller, MuTect2, Samtools, Platypus
 
 ### INSTALLATION
-1) you need to be root to install library dependencies, unless already present (to test this, just go on with step 2)
-sudp apt-get update
-sudo apt-get install cmake install git g++ gcc make openjdk-8-jdk python-dev unzip zlib1g-dev libncurses5-dev libncursesw5-dev libexpat1-dev
+1) you need to be root to install dependencies, unless already present (to check this go on with step 2)
+sudo apt-get update
+sudo apt-get install cmake install git g++ gcc make openjdk-8-jdk python-dev unzip
 2) create a directory for muvac tools installation, which can changed here (default is current working directory with absolute path $PWD)
 mkdir -p $PWD/muvactools
 3) create a shell variable MUVAC assigned to your previous defined installation directory
@@ -22,7 +22,7 @@ wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.0.zip
 unzip muvac-v0.1.0.zip
 7) enter the muvac directory
 cd muvac-0.1.0
-8) install required tools for muvac - ATTENTION: make sure to use Java 8 as your default
+8) install required tools for muvac
 ./muvac -i all
 
 ### DOWNLOAD HG19/GRCh37.p13 and dbSNP vcf
@@ -43,7 +43,7 @@ mkdir -p $PWD/genomes
 ./muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
 
 ### INFO: RUN
-- a comprehensive logging file 'run.log' file will be created in your output directory, unless defined otherwise
+- a comprehensive log file 'run.log' file will be created in your output directory, unless defined otherwise
 - using the verbose option '-v' will additionally print full log to terminals stdout
 - example run for multiple patients data to be processed in parallel
 ./muvac -1 patient1_1.fq,patient2_1.fq -2 patient1_2.fq,patient2_2.fq -g genomes/hg19.fa -o results -l results/run.log
