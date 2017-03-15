@@ -14,7 +14,7 @@ usage() {
 	echo "v0.1.0"
 	echo ""
 	echo "INSTALLATION"
-	echo "-i | --install all               : installation to exported directory: export MUVAC=<PATH> - default: $PWD/tools"
+	echo "-i | --install all               : installation into exported directory: export MUVAC=/full/path/to/requiered/tools"
 	echo ""
 	echo "OPTIONS"
 	echo "-1 | --fastq1 [path,path,..]     : fastq input - single or first pair, comma seperated"
@@ -27,7 +27,6 @@ usage() {
 	echo "-h | --help                      : prints this message"
 	echo "-v | --verbose                   : enable verbose mode"
 	echo "-r | --remove                    : finally remove intermediate results and temporary files"
-	echo "-s | --split                     : run Segemehl mapper in split mode with max-insert size 30k"
 	echo ""
 	echo "-no-pre   | --no-preprocessing   : disables quality analysis, adapter clipping, error correction"
 	echo "-no-trim  | --no-trimming        : disables quality trimming"
@@ -40,7 +39,7 @@ usage() {
 	echo "-no-fb    | --no-freebayes       : disables variance caller Freebayes"
 	echo "-no-st    | --no-samtools        : disables variance caller Samtools/Bcftools"
 	echo "-no-pp    | --no-platypus        : disables variance caller Platypus"
-	#echo "-Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge"
+	#echo "-slit -Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge"
 	exit 0
 }
 
@@ -107,27 +106,27 @@ install () {
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "freebayes" ]]; then
-	    echo ":INFO: installing freebayes"
-	    cd $tooldir
-	    git clone --recursive git://github.com/ekg/freebayes.git
-	    cd freebayes
-	    make clean
-	    rm -rf bamtools
-	    git clone https://github.com/pezmaster31/bamtools.git
-	    cd bamtools
-	    rm -rf build; mkdir -p build
-	    cd build
-	    cmake .. && make
-	    cd $tooldir/freebayes/vcflibs
-	    make clean; make
-	    cd $tooldir/freebayes/SeqLib
-	    make clean; ./configure --prefix=$PWD && make && make install
-	    cd $tooldir/freebayes
-	    make
-	    if [[ $? -gt 0 ]]; then
-            echo ":ERROR: freebayes installation failed"
-        	return 1
-        fi
+		echo ":INFO: installing freebayes"
+		cd $tooldir
+		git clone --recursive git://github.com/ekg/freebayes.git
+		cd freebayes
+		make clean
+		rm -rf bamtools
+		git clone https://github.com/pezmaster31/bamtools.git
+		cd bamtools
+		rm -rf build; mkdir -p build
+		cd build
+		cmake .. && make
+		cd $tooldir/freebayes/vcflibs
+		make clean; make
+		cd $tooldir/freebayes/SeqLib
+		make clean; ./configure --prefix=$PWD && make && make install
+		cd $tooldir/freebayes
+		make
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: freebayes installation failed"
+			return 1
+		fi
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "fastqc" ]]; then
@@ -239,7 +238,7 @@ install () {
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "segemehl" ]]; then
-		# echo ":INFO: installing segemehl"
+		echo ":INFO: installing segemehl"
 		# url='http://www.bioinf.uni-leipzig.de/Software/segemehl/segemehl_0_2_0.tar.gz'
 		# wget -q $url -O $tooldir/segemehl.tar.gz && tar -xzf $tooldir/segemehl.tar.gz -C $tooldir && rm $tooldir/segemehl.tar.gz
 		# cd $(ls -d $tooldir/segemehl*/segemehl | sort -r | head -1) && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile
@@ -307,16 +306,17 @@ install () {
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "picard" ]]; then
-	    mkdir -p $tooldir/picard-2.8.2
-	    url='https://github.com/broadinstitute/picard/releases/download/2.8.2/picard-2.8.2.jar'
-	    wget -q $url -O $tooldir/picard-2.8.2/picard.jar
-	    if [[ $? -gt 0 ]]; then
+		mkdir -p $tooldir/picard-2.8.2
+		url='https://github.com/broadinstitute/picard/releases/download/2.8.2/picard-2.8.2.jar'
+		wget -q $url -O $tooldir/picard-2.8.2/picard.jar
+		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: picard installation failed"
 			return 1
-	    fi
+		fi
 	fi
 
 	echo ":INFO: installation successful"
+	sleep 1
 	return 0
 }
 
@@ -370,6 +370,10 @@ if [[ $noprep -eq 0 ]]; then
 		fi
 		#enable dev skip option if already done
 		[[ $Sa -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: clipping failed"
+			return 1
+		fi
 	fi
 fi
 
@@ -394,6 +398,10 @@ fi
 		done 
 		#enable dev skip option if already done
 		[[ $Sconv -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: quality reencoding failed"
+			return 1
+		fi
 	fi
 
 if [[ $notrim -eq 0 ]]; then
@@ -417,33 +425,45 @@ if [[ $notrim -eq 0 ]]; then
 	fi
 	#enable dev skip option if already done
 	[[ $Str -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: trimming failed"
+		return 1
+	fi
 fi
 
 if [[ $noprep -eq 0 ]]; then
-    echo ":INFO: read error correction"
-    mkdir -p $outdir/rawcorrected
-    if [[ ${fastq2[0]} ]]; then
-    	for i in $(seq 0 $((${#fastq1[@]}-1))); do
-    	    o1=$outdir/rawcorrected/$(basename ${fastq1[$i]})
-    	    o2=$outdir/rawcorrected/$(basename ${fastq2[$i]})
+	echo ":INFO: read error correction"
+	mkdir -p $outdir/rawcorrected
+	if [[ ${fastq2[0]} ]]; then
+		for i in $(seq 0 $((${#fastq1[@]}-1))); do
+			o1=$outdir/rawcorrected/$(basename ${fastq1[$i]})
+			o2=$outdir/rawcorrected/$(basename ${fastq2[$i]})
 			if [[ $Scor -eq 0 ]]; then #enable dev skip option if already done
 				/usr/bin/time -v ${BASH_ALIASES[rcorrector]} -1 ${fastq1[$i]} -2 ${fastq2[$i]} -od $outdir/rawcorrected -t $threads
+				if [[ $? -gt 0 ]]; then
+					echo ":ERROR: read error correction failed"
+					return 1
+				fi
 				mv ${o1%.*}.cor.fq $o1
 				mv ${o2%.*}.cor.fq $o2
 			fi
-    	    fastq1[$i]=$o1
-    	    fastq2[$i]=$o2
-    	done
-    else
-    	for i in $(seq 0 $((${#fastq1[@]}-1))); do
-            o=$outdir/rawcorrected/$(basename ${fastq1[$i]})
+			fastq1[$i]=$o1
+			fastq2[$i]=$o2
+		done
+	else
+		for i in $(seq 0 $((${#fastq1[@]}-1))); do
+			o=$outdir/rawcorrected/$(basename ${fastq1[$i]})
 			if [[ $Scor -eq 0 ]]; then #enable dev skip option if already done
 				/usr/bin/time -v ${BASH_ALIASES[rcorrector]} -s ${fastq1[$i]} -od $outdir/rawcorrected -t $threads
+				if [[ $? -gt 0 ]]; then
+					echo ":ERROR: read error correction failed"
+					return 1
+				fi
 				mv ${o%.*}.cor.fq $o
 			fi
-            fastq1[$i]=$o
-        done
-    fi
+			fastq1[$i]=$o
+		done
+	fi
 fi
 
 if [[ $nosmap -eq 0 ]]; then
@@ -452,11 +472,11 @@ if [[ $nosmap -eq 0 ]]; then
 	declare -A mappingsegemehl
 	cmd=()
 	if [[ ! -e $genome.segemehl.idx ]]; then
-	 	${BASH_ALIASES[segemehl]} -x $genome.segemehl.idx -d $genome
+		${BASH_ALIASES[segemehl]} -x $genome.segemehl.idx -d $genome
 	fi
 	for i in $(seq 0 $((${#fastq1[@]}-1))); do
-	 	o=$outdir/mapped/segemehl/$(basename ${fastq1[$i]})
-	 	o=${o%.*}
+		o=$outdir/mapped/segemehl/$(basename ${fastq1[$i]})
+		o=${o%.*}
 		if [[ $split -eq 0 ]]; then
 			sege="${BASH_ALIASES[segemehl]}"
 		else 
@@ -465,12 +485,16 @@ if [[ $nosmap -eq 0 ]]; then
 		if [[ ${fastq2[0]} ]]; then
 		 	cmd+=("$sege -i $genome.segemehl.idx -d $genome -q ${fastq1[$i]} -p ${fastq2[$i]} -A 95 -t $threads -u $o.unmapped.sam > $o.sam\n")
 		else
-	 		cmd+=("$sege -i $genome.segemehlidx -d $genome -q ${fastq1[$i]} -A 95 -t $threads -u $o.unmappes.sam > $o.sam\n")
+			cmd+=("$sege -i $genome.segemehlidx -d $genome -q ${fastq1[$i]} -A 95 -t $threads -u $o.unmappes.sam > $o.sam\n")
 		fi
-	 	mappingsegemehl[$i]=$o
+		mappingsegemehl[$i]=$o
 	done
 	#enable dev skip option if already done
 	[[ $Sms -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: segemehl mapping failed"
+		return 1
+	fi
 fi
 
 if [[ $notmap -eq 0 ]]; then
@@ -488,11 +512,15 @@ if [[ $notmap -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} ${fastq2[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
 		else 
 			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
-		fi			
+		fi
 		mappingtophat[$i]=$o.unsorted
 	done
 	#enable dev skip option if already done
 	[[ $Smt -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: tophat mapping failed"
+		return 1
+	fi
 fi
 
 if [[ $nobmap -eq 0 ]]; then
@@ -536,6 +564,10 @@ if [[ $nobmap -eq 0 ]]; then
 	fi
 	#enable dev skip option if already done
 	[[ $Smb -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: bwa mapping failed"
+		return 1
+	fi
 	cmd=()
 	for i in $(seq 0 $((${#mappingbwa[@]}-1))); do
 		o=${mappingbwa[$i]}
@@ -546,6 +578,10 @@ if [[ $nobmap -eq 0 ]]; then
 	done
 	#enable dev skip option if already done
 	[[ $Smb -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: bwa unmapped read extraction failed"
+		return 1
+	fi
 fi
 
 	echo ":INFO: create sorted bams"
@@ -554,13 +590,13 @@ fi
 		o=${mappingsegemehl[$i]}
 		o=${o%.*}
 		cmd+=("${BASH_ALIASES[samtools]} view -bS $o.sam | ${BASH_ALIASES[samtools]} sort - -T $o.tmp -o $o.bam\n")
-	    mappingsegemehl[$i]=$o.bam
+		mappingsegemehl[$i]=$o.bam
 	done  
 	for i in $(seq 0 $((${#mappingtophat[@]}-1))); do
 		o=${mappingtophat[$i]}
 		o=${o%.*}
 		cmd+=("${BASH_ALIASES[samtools]} sort $o.unsorted -T $o.tmp -o $o.bam\n")
-	    mappingtophat[$i]=$o.bam
+		mappingtophat[$i]=$o.bam
 	done 
 	for i in $(seq 0 $((${#mappingbwa[@]}-1))); do
 		o=${mappingbwa[$i]}
@@ -570,6 +606,10 @@ fi
 	done 
 	#enable dev skip option if already done
 	[[ $Sort -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: sorting bam failed"
+		return 1
+	fi
 
 	echo ":INFO: add read group information"
 	cmd=()
@@ -578,14 +618,22 @@ fi
 	done
 	#enable dev skip option if already done
 	[[ $Srg -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: read group modification failed"
+		return 1
+	fi
 
 	echo ":INFO: index bam"
 	cmd=()
 	for f in {${mappingsegemehl[@]},${mappingtophat[@]},${mappingbwa[@]}}; do
-	    cmd+=("${BASH_ALIASES[samtools]} index $f\n")
+		cmd+=("${BASH_ALIASES[samtools]} index $f\n")
 	done
 	#enable dev skip option if already done
 	[[ $Srg -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: indexing bam failed"
+		return 1
+	fi
 
 	echo ":INFO: remove duplicates"
 	cmd=()
@@ -609,21 +657,37 @@ fi
 	done
 	#enable dev skip option if already done
 	[[ $Srmd -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: duplicate removal failed"
+		return 1
+	fi
 
 	echo ":INFO: index bam"
 	cmd=()
 	for f in {${mappingsegemehl[@]},${mappingtophat[@]},${mappingbwa[@]}}; do
-	    cmd+=("${BASH_ALIASES[samtools]} index $f\n")
+		cmd+=("${BASH_ALIASES[samtools]} index $f\n")
 	done 
 	#enable dev skip option if already done
 	[[ $Srmd -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: indexing bam failed"
+		return 1
+	fi
 
 	echo ":INFO: reorder bam"
 	if [[ ! -e ${genome%.*}.dict ]]; then
-	    /usr/bin/time -v ${BASH_ALIASES[picard]} CreateSequenceDictionary R=$genome
+		/usr/bin/time -v ${BASH_ALIASES[picard]} CreateSequenceDictionary R=$genome
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: genome dictionary creation failed"
+			return 1
+		fi
 	fi
 	if [[ ! -e $genome.fai ]]; then
-	    /usr/bin/time -v ${BASH_ALIASES[samtools]} faidx $genome
+		/usr/bin/time -v ${BASH_ALIASES[samtools]} faidx $genome
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: genome indexing failed"
+			return 1
+		fi
 	fi
 	cmd=()
 	for i in $(seq 0 $((${#mappingsegemehl[@]}-1))); do
@@ -631,7 +695,7 @@ fi
 		o=${o%.*}
 		cmd+=("${BASH_ALIASES[picard]} ReorderSam I=$o.bam O=$o.reordered.bam R=$genome CREATE_INDEX=TRUE VALIDATION_STRINGENCY=SILENT\n")
 		mappingsegemehl[$i]=$o.reordered.bam
-	done  
+	done
 	for i in $(seq 0 $((${#mappingbwa[@]}-1))); do
 		o=${mappingbwa[$i]}
 		o=${o%.*}
@@ -642,96 +706,116 @@ fi
 		o=${mappingtophat[$i]}
 		o=${o%.*}
 		cmd+=("${BASH_ALIASES[picard]} ReorderSam I=$o.bam O=$o.reordered.bam R=$genome CREATE_INDEX=TRUE VALIDATION_STRINGENCY=SILENT\n")
-	    mappingtophat[$i]=$o.reordered.bam
+		mappingtophat[$i]=$o.reordered.bam
 	done 
 	#enable dev skip option if already done
 	[[ $Sreo -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: bam reordering failed"
+		return 1
+	fi
 
 if [[ $norecal -eq 0 ]]; then
 	echo ":INFO: indel error prediction"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
-	    mkdir -p $outdir/errorcorrected/segemehl
+		mkdir -p $outdir/errorcorrected/segemehl
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/segemehl/${o%.*}.intervals
-        cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
-    done
-    for f in ${mappingtophat[@]}; do
+		o=$outdir/errorcorrected/segemehl/${o%.*}.intervals
+		cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
+	done
+	for f in ${mappingtophat[@]}; do
 		mkdir -p $outdir/errorcorrected/tophat
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/tophat/${o%.*}.intervals
-        cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
-    done
-    for f in ${mappingbwa[@]}; do
+		o=$outdir/errorcorrected/tophat/${o%.*}.intervals
+		cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
+	done
+	for f in ${mappingbwa[@]}; do
 		mkdir -p $outdir/errorcorrected/bwa
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/bwa/${o%.*}.intervals
-        cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
-    done
+		o=$outdir/errorcorrected/bwa/${o%.*}.intervals
+		cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
+	done
 	#enable dev skip option if already done
 	[[ $Sret -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: indel error prediction failed"
+		return 1
+	fi
 
 	echo ":INFO: indel error correction"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/segemehl/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
-    done
+		o=$outdir/errorcorrected/segemehl/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
+	done
 	for f in ${mappingtophat[@]}; do
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/tophat/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
+		o=$outdir/errorcorrected/tophat/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
     done
 	for f in ${mappingbwa[@]}; do
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/bwa/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
-    done
+		o=$outdir/errorcorrected/bwa/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
+	done
 	#enable dev skip option if already done
 	[[ $Srea -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: indel error correction failed"
+		return 1
+	fi
 
 	echo ":INFO: base recalibration"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
 		o=$(basename $f)
-	    o=$outdir/errorcorrected/segemehl/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
-    done
+		o=$outdir/errorcorrected/segemehl/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
+	done
 	for f in ${mappingtophat[@]}; do
 		o=$(basename $f)
-        o=$outdir/errorcorrected/tophat/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
-    done
+		o=$outdir/errorcorrected/tophat/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
+	done
 	for f in ${mappingbwa[@]}; do
 		o=$(basename $f)
-        o=$outdir/errorcorrected/bwa/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
-    done
+		o=$outdir/errorcorrected/bwa/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
+	done
 	#enable dev skip option if already done
 	[[ $Srec -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: base recalibration failed"
+		return 1
+	fi
 
 	cmd=()
-    for i in $(seq 0 $((${#mappingsegemehl[@]}-1))); do
+	for i in $(seq 0 $((${#mappingsegemehl[@]}-1))); do
 		o=$(basename ${mappingsegemehl[$i]})
-        o=$outdir/errorcorrected/segemehl/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T PrintReads -nct $threads -R $genome -I $o.torecal.bam -BQSR $o.recalreport -o $o.bam -U ALLOW_N_CIGAR_READS\n")
-        mappingsegemehl[$i]=$o.bam
-    done
-    for i in $(seq 0 $((${#mappingtophat[@]}-1))); do
+		o=$outdir/errorcorrected/segemehl/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T PrintReads -nct $threads -R $genome -I $o.torecal.bam -BQSR $o.recalreport -o $o.bam -U ALLOW_N_CIGAR_READS\n")
+		mappingsegemehl[$i]=$o.bam
+	done
+	for i in $(seq 0 $((${#mappingtophat[@]}-1))); do
 		o=$(basename ${mappingtophat[$i]})
-        o=$outdir/errorcorrected/tophat/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T PrintReads -nct $threads -R $genome -I $o.torecal.bam -BQSR $o.recalreport -o $o.bam -U ALLOW_N_CIGAR_READS\n")
-        mappingtophat[$i]=$o.bam
-    done
-    for i in $(seq 0 $((${#mappingbwa[@]}-1))); do
+		o=$outdir/errorcorrected/tophat/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T PrintReads -nct $threads -R $genome -I $o.torecal.bam -BQSR $o.recalreport -o $o.bam -U ALLOW_N_CIGAR_READS\n")
+		mappingtophat[$i]=$o.bam
+	done
+	for i in $(seq 0 $((${#mappingbwa[@]}-1))); do
 		o=$(basename ${mappingbwa[$i]})
-        o=$outdir/errorcorrected/bwa/${o%.*}
-        cmd+=("${BASH_ALIASES[gatk]} -T PrintReads -nct $threads -R $genome -I $o.torecal.bam -BQSR $o.recalreport -o $o.bam -U ALLOW_N_CIGAR_READS\n")
-        mappingbwa[$i]=$o.bam
-    done
+		o=$outdir/errorcorrected/bwa/${o%.*}
+		cmd+=("${BASH_ALIASES[gatk]} -T PrintReads -nct $threads -R $genome -I $o.torecal.bam -BQSR $o.recalreport -o $o.bam -U ALLOW_N_CIGAR_READS\n")
+		mappingbwa[$i]=$o.bam
+	done
 	#enable dev skip option if already done
 	[[ $Sprint -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: BQSR failed"
+		return 1
+	fi
 fi
 
 if [[ $nosmap -eq 0 ]]; then
@@ -744,47 +828,55 @@ if [[ $nobmap -eq 0 ]]; then
 	mkdir -p $outdir/vcf/bwa
 fi
 if [[ $nohc -eq 0 ]]; then
-    echo ":INFO: variance calling - haplotypecaller"
+	echo ":INFO: variance calling - haplotypecaller"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
 		o=$(basename $f)
-	    o=$outdir/vcf/segemehl/${o%.*}.haplotypecaller.vcf
+		o=$outdir/vcf/segemehl/${o%.*}.haplotypecaller.vcf
 		cmd+=("${BASH_ALIASES[gatk]} -T HaplotypeCaller -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I $f --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 	done
 	for f in ${mappingtophat[@]}; do
 		o=$(basename $f)
-	    o=$outdir/vcf/tophat/${o%.*}.haplotypecaller.vcf
+		o=$outdir/vcf/tophat/${o%.*}.haplotypecaller.vcf
 		cmd+=("${BASH_ALIASES[gatk]} -T HaplotypeCaller -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I $f --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 	done
 	for f in ${mappingbwa[@]}; do
 		o=$(basename $f)
-	    o=$outdir/vcf/bwa/${o%.*}.haplotypecaller.vcf
-	    cmd+=("${BASH_ALIASES[gatk]} -T HaplotypeCaller -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I $f --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
+		o=$outdir/vcf/bwa/${o%.*}.haplotypecaller.vcf
+		cmd+=("${BASH_ALIASES[gatk]} -T HaplotypeCaller -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I $f --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 	done
 	#enable dev skip option if already done
 	[[ $Shc -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: haplotypecaller failed"
+		return 1
+	fi
 fi
 
 if [[ $nomu -eq 0 ]]; then
-	echo ":INFO: variance calling - mutect2"	
+	echo ":INFO: variance calling - mutect2"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
 		o=$(basename $f)
-	    o=$outdir/vcf/segemehl/${o%.*}.mutect2.vcf
+		o=$outdir/vcf/segemehl/${o%.*}.mutect2.vcf
 		cmd+=("${BASH_ALIASES[gatk]} -T MuTect2 -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I:tumor $f --artifact_detection_mode --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 	done
 	for f in ${mappingtophat[@]}; do
 		o=$(basename $f)
-	    o=$outdir/vcf/tophat/${o%.*}.mutect2.vcf
+		o=$outdir/vcf/tophat/${o%.*}.mutect2.vcf
 		cmd+=("${BASH_ALIASES[gatk]} -T MuTect2 -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I:tumor $f --artifact_detection_mode --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 	done
 	for f in ${mappingbwa[@]}; do
 		o=$(basename $f)
-	    o=$outdir/vcf/bwa/${o%.*}.mutect2.vcf
+		o=$outdir/vcf/bwa/${o%.*}.mutect2.vcf
 		cmd+=("${BASH_ALIASES[gatk]} -T MuTect2 -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I:tumor $f --artifact_detection_mode --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 	done
 	#enable dev skip option if already done
 	[[ $Smu -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: mutect failed"
+		return 1
+	fi
 fi
 
 if [[ $nofb -eq 0 ]]; then 
@@ -796,19 +888,19 @@ if [[ $nofb -eq 0 ]]; then
 		i=0
 		for chr in $(${BASH_ALIASES[samtools]} view -H $f | grep '^@SQ' | perl -lane '$F[1]=~/SN:(.+)$/; $chr=$1; $F[2]=~/(\d+)$/; $l=$1; $chunk=sprintf("%d",$l/$ENV{threads}); $i=1; while(($i+1)*$chunk<$l){print($chr.":".($i*$chunk-$chunk+1)."-".($i*$chunk)); $i++} print($chr.":".(($i-1)*$chunk+1)."-".$l)'); do
 			i=$((i+1))
-	        cmd+=("${BASH_ALIASES[freebayes]} -f $genome -r $chr --genotype-qualities --use-best-n-alleles 3 --min-coverage 10 --min-alternate-fraction 0.1 --use-mapping-quality --harmonic-indel-quality -P 0.0001 $f | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o.$i\n")
+		cmd+=("${BASH_ALIASES[freebayes]} -f $genome -r $chr --genotype-qualities --use-best-n-alleles 3 --min-coverage 10 --min-alternate-fraction 0.1 --use-mapping-quality --harmonic-indel-quality -P 0.0001 $f | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o.$i\n")
 		done
-    done
-    for f in ${mappingtophat[@]}; do
+	done
+	for f in ${mappingtophat[@]}; do
 		o=$(basename $f)
 		o=$outdir/tmp/tophat/${o%.*}.freebayes.vcf
 		i=0
 		for chr in $(${BASH_ALIASES[samtools]} view -H $f | grep '^@SQ' | perl -lane '$F[1]=~/SN:(.+)$/; $chr=$1; $F[2]=~/(\d+)$/; $l=$1; $chunk=sprintf("%d",$l/$ENV{threads}); $i=1; while(($i+1)*$chunk<$l){print($chr.":".($i*$chunk-$chunk+1)."-".($i*$chunk)); $i++} print($chr.":".(($i-1)*$chunk+1)."-".$l)'); do
 			i=$((i+1))
-	        cmd+=("${BASH_ALIASES[freebayes]} -f $genome -r $chr --genotype-qualities --use-best-n-alleles 3 --min-coverage 10 --min-alternate-fraction 0.1 --use-mapping-quality --harmonic-indel-quality -P 0.0001 $f | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o.$i\n")
+			cmd+=("${BASH_ALIASES[freebayes]} -f $genome -r $chr --genotype-qualities --use-best-n-alleles 3 --min-coverage 10 --min-alternate-fraction 0.1 --use-mapping-quality --harmonic-indel-quality -P 0.0001 $f | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o.$i\n")
 		done
-    done
-    for f in ${mappingbwa[@]}; do
+	done
+	for f in ${mappingbwa[@]}; do
 		o=$(basename $f)
 		o=$outdir/tmp/bwa/${o%.*}.freebayes.vcf
 		i=0
@@ -816,9 +908,13 @@ if [[ $nofb -eq 0 ]]; then
 			i=$((i+1))
 			cmd+=("${BASH_ALIASES[freebayes]} -f $genome -r $chr --genotype-qualities --use-best-n-alleles 3 --min-coverage 10 --min-alternate-fraction 0.1 --use-mapping-quality --harmonic-indel-quality -P 0.0001 $f | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o.$i\n")
 		done
-    done
+	done
 	#enable dev skip option if already done
 	[[ $Sfb -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: freebayes failed"
+		return 1
+	fi
 
 	if [[ $Sfb -eq 0 ]]; then
 		for f in ${mappingsegemehl[@]}; do
@@ -826,6 +922,10 @@ if [[ $nofb -eq 0 ]]; then
 			tmp=$outdir/tmp/segemehl/${o%.*}.freebayes.vcf
 			o=$outdir/vcf/segemehl/${o%.*}.freebayes.vcf
 			${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: freebayes merge for segemehl failed"
+				return 1
+			fi
 			cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 		done
 		for f in ${mappingtophat[@]}; do
@@ -833,6 +933,10 @@ if [[ $nofb -eq 0 ]]; then
 			tmp=$outdir/tmp/tophat/${o%.*}.freebayes.vcf
 			o=$outdir/vcf/tophat/${o%.*}.freebayes.vcf
 			${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: freebayes merge for tophat failed"
+				return 1
+			fi
 			cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 		done
 		for f in ${mappingbwa[@]}; do
@@ -840,6 +944,10 @@ if [[ $nofb -eq 0 ]]; then
 			tmp=$outdir/tmp/bwa/${o%.*}.freebayes.vcf
 			o=$outdir/vcf/bwa/${o%.*}.freebayes.vcf
 			${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: freebayes merge for bwa failed"
+				return 1
+			fi
 			cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 		done
 	fi
@@ -849,7 +957,7 @@ if [[ $nost -eq 0 ]]; then
 	echo ":INFO: variance calling - samtools"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
-	    o=$(basename $f)
+		o=$(basename $f)
 		o=$outdir/tmp/segemehl/${o%.*}.samtools.vcf
 		i=0
 		for chr in $(${BASH_ALIASES[samtools]} view -H $f | grep '^@SQ' | perl -lane '$F[1]=~/SN:(.+)$/; $chr=$1; $F[2]=~/(\d+)$/; $l=$1; $chunk=sprintf("%d",$l/$ENV{threads}); $i=1; while(($i+1)*$chunk<$l){print($chr.":".($i*$chunk-$chunk+1)."-".($i*$chunk)); $i++} print($chr.":".(($i-1)*$chunk+1)."-".$l)'); do
@@ -858,7 +966,7 @@ if [[ $nost -eq 0 ]]; then
 		done
 	done
 	for f in ${mappingtophat[@]}; do
-	    o=$(basename $f)
+		o=$(basename $f)
 		o=$outdir/tmp/tophat/${o%.*}.samtools.vcf
 		i=0
 		for chr in $(${BASH_ALIASES[samtools]} view -H $f | grep '^@SQ' | perl -lane '$F[1]=~/SN:(.+)$/; $chr=$1; $F[2]=~/(\d+)$/; $l=$1; $chunk=sprintf("%d",$l/$ENV{threads}); $i=1; while(($i+1)*$chunk<$l){print($chr.":".($i*$chunk-$chunk+1)."-".($i*$chunk)); $i++} print($chr.":".(($i-1)*$chunk+1)."-".$l)'); do
@@ -867,7 +975,7 @@ if [[ $nost -eq 0 ]]; then
 		done
 	done
 	for f in ${mappingbwa[@]}; do
-	    o=$(basename $f)
+		o=$(basename $f)
 		o=$outdir/tmp/bwa/${o%.*}.samtools.vcf
 		i=0
 		for chr in $(${BASH_ALIASES[samtools]} view -H $f | grep '^@SQ' | perl -lane '$F[1]=~/SN:(.+)$/; $chr=$1; $F[2]=~/(\d+)$/; $l=$1; $chunk=sprintf("%d",$l/$ENV{threads}); $i=1; while(($i+1)*$chunk<$l){print($chr.":".($i*$chunk-$chunk+1)."-".($i*$chunk)); $i++} print($chr.":".(($i-1)*$chunk+1)."-".$l)'); do
@@ -877,6 +985,10 @@ if [[ $nost -eq 0 ]]; then
 	done
 	#enable dev skip option if already done
 	[[ $Sst -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: samtools failed"
+		return 1
+	fi
 
 	if [[ $Sst -eq 0 ]]; then
 		for f in ${mappingsegemehl[@]}; do
@@ -884,6 +996,10 @@ if [[ $nost -eq 0 ]]; then
 			tmp=$outdir/tmp/segemehl/${o%.*}.samtools.vcf
 			o=$outdir/vcf/segemehl/${o%.*}.samtools.vcf
 			${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: samtools merge for segemehl failed"
+				return 1
+			fi
 			cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 		done
 		for f in ${mappingtophat[@]}; do
@@ -891,6 +1007,10 @@ if [[ $nost -eq 0 ]]; then
 			tmp=$outdir/tmp/tophat/${o%.*}.samtools.vcf
 			o=$outdir/vcf/tophat/${o%.*}.samtools.vcf
 			${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: samtools merge for tophat failed"
+				return 1
+			fi
 			cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 		done
 		for f in ${mappingbwa[@]}; do
@@ -898,6 +1018,10 @@ if [[ $nost -eq 0 ]]; then
 			tmp=$outdir/tmp/bwa/${o%.*}.samtools.vcf
 			o=$outdir/vcf/bwa/${o%.*}.samtools.vcf
 			${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: samtools merge for bwa failed"
+				return 1
+			fi
 			cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 		done
 	fi
@@ -905,58 +1029,72 @@ fi
 
 if [[ $nopp -eq 0 ]]; then
 	echo ":INFO: variance calling - platypus"
-	if [[ ! -e $genome.vcf.gz ]]; then
-		${BASH_ALIASES[bgzip]} -f -@ $threads < $genome.vcf > $genome.vcf.gz
-	fi
-	if [[ ! -e $genome.vcf.gz.tbi ]]; then
-		${BASH_ALIASES[tabix]} -f $genome.vcf.gz
-	fi
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
-        o=$(basename $f)
-        o=$outdir/tmp/segemehl/${o%.*}.platypus.vcf
+		o=$(basename $f)
+		o=$outdir/tmp/segemehl/${o%.*}.platypus.vcf
 		cmd+=("${BASH_ALIASES[platypus]} callVariants --logFileName=$o.log --output=$o --refFile=$genome --bamFiles=$f --qdThreshold=0 --minGoodQualBases=0 --minBaseQual=0 --minMapQual=0 --minReads=10 --nCPU=$threads --filterVarsByCoverage=1 --minVarFreq=0.1 --filterDuplicates=1 --rmsmqThreshold=0 --qdThreshold=0 --useEMLikelihoods=1 --hapScoreThreshold=0 --badReadsThreshold=0 --maxVariants 100000 --minPosterior=3\n")
 	done
 	for f in ${mappingtophat[@]}; do
-        o=$(basename $f)
-        o=$outdir/tmp/tophat/${o%.*}.platypus.vcf
+		o=$(basename $f)
+		o=$outdir/tmp/tophat/${o%.*}.platypus.vcf
 		cmd+=("${BASH_ALIASES[platypus]} callVariants --logFileName=$o.log --output=$o --refFile=$genome --bamFiles=$f --qdThreshold=0 --minGoodQualBases=0 --minBaseQual=0 --minMapQual=0 --minReads=10 --nCPU=$threads --filterVarsByCoverage=1 --minVarFreq=0.1 --filterDuplicates=1 --rmsmqThreshold=0 --qdThreshold=0 --useEMLikelihoods=1 --hapScoreThreshold=0 --badReadsThreshold=0 --maxVariants 100000 --minPosterior=3\n")
 	done
 	for f in ${mappingbwa[@]}; do
-        o=$(basename $f)
-        o=$outdir/tmp/bwa/${o%.*}.platypus.vcf
+		o=$(basename $f)
+		o=$outdir/tmp/bwa/${o%.*}.platypus.vcf
 		cmd+=("${BASH_ALIASES[platypus]} callVariants --logFileName=$o.log --output=$o --refFile=$genome --bamFiles=$f --qdThreshold=0 --minGoodQualBases=0 --minBaseQual=0 --minMapQual=0 --minReads=10 --nCPU=$threads --filterVarsByCoverage=1 --minVarFreq=0.1 --filterDuplicates=1 --rmsmqThreshold=0 --qdThreshold=0 --useEMLikelihoods=1 --hapScoreThreshold=0 --badReadsThreshold=0 --maxVariants 100000 --minPosterior=3\n")
 	done
 	#enable dev skip option if already done
 	[[ $Spp -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: platypus failed"
+		return 1
+	fi
 
 	if [[ $Spp -eq 0 ]]; then
 		cmd=()
 		for f in ${mappingsegemehl[@]}; do
-    	    o=$(basename $f)
+			o=$(basename $f)
 			tmp=$outdir/tmp/segemehl/${o%.*}.platypus.vcf
 			o=$outdir/vcf/segemehl/${o%.*}.platypus.vcf
 			${BASH_ALIASES[bgzip]} -f -@ $threads < $tmp > $tmp.gz
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: platypus fix for segemehl failed"
+				return 1
+			fi
 			${BASH_ALIASES[tabix]} -f $tmp.gz
 			cmd+=("${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both $tmp.gz | ${BASH_ALIASES[vcfix]} > $o\n")
 		done
 		for f in ${mappingtophat[@]}; do
-    	    o=$(basename $f)
+			o=$(basename $f)
 			tmp=$outdir/tmp/tophat/${o%.*}.platypus.vcf
 			o=$outdir/vcf/tophat/${o%.*}.platypus.vcf
 			${BASH_ALIASES[bgzip]} -f -@ $threads < $tmp > $tmp.gz
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: platypus fix for tophat failed"
+				return 1
+			fi
 			${BASH_ALIASES[tabix]} -f $tmp.gz
 			cmd+=("${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both $tmp.gz | ${BASH_ALIASES[vcfix]} > $o\n")
 		done
 		for f in ${mappingbwa[@]}; do
-    	    o=$(basename $f)
+			o=$(basename $f)
 			tmp=$outdir/tmp/bwa/${o%.*}.platypus.vcf
 			o=$outdir/vcf/bwa/${o%.*}.platypus.vcf
 			${BASH_ALIASES[bgzip]} -f -@ $threads < $tmp > $tmp.gz
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: platypus fix for bwa failed"
+				return 1
+			fi
 			${BASH_ALIASES[tabix]} -f $tmp.gz
 			cmd+=("${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both $tmp.gz | ${BASH_ALIASES[vcfix]} > $o\n")
 		done
 		echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {}
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: platypus fix failed"
+			return 1
+		fi
 	fi
 fi
 
@@ -964,76 +1102,122 @@ if [[ $Smerge -eq 0 ]]; then
 	echo ":INFO: merging vcf files"
 	cmd=()
 	for f in ${mappingsegemehl[@]}; do
-        o=$(basename $f)
-        o=$outdir/vcf/segemehl/${o%.*}
-		for v in $(ls $# o*.vcf | grep -v merged); do
-		  	${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
-		  	${BASH_ALIASES[tabix]} -f $v.gz
+		o=$(basename $f)
+		o=$outdir/vcf/segemehl/${o%.*}
+		for v in $(ls $o*.vcf | grep -v merged); do
+			${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf compression for segemehl failed"
+				return 1
+			fi
+			${BASH_ALIASES[tabix]} -f $v.gz
 		done
 		if [[ $(ls $o*.vcf.gz | grep -v merged | wc -l) -gt 0 ]]; then
 			${BASH_ALIASES[bcftools]} merge --print-header --force-samples $(ls $o*.vcf.gz | grep -v merged) > $o.merged.vcf
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf header merge for segemehl failed"
+				return 1
+			fi
 			sed -i '$ d' $o.merged.vcf
 			cmd+=("${BASH_ALIASES[vcfmerge]} "$(ls $o*.vcf | grep -v merged)" "$(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}')" >> $o.merged.vcf")
 		fi
 	done
 	for f in ${mappingtophat[@]}; do
-        o=$(basename $f)
-        o=$outdir/vcf/tophat/${o%.*}
+		o=$(basename $f)
+		o=$outdir/vcf/tophat/${o%.*}
 		for v in $(ls $o*.vcf | grep -v merged); do
-		 	${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
+			${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf compression for tophat failed"
+				return 1
+			fi
 		 	${BASH_ALIASES[tabix]} -f $v.gz
 		done
 		if [[ $(ls $o*.vcf.gz | grep -v merged | wc -l) -gt 0 ]]; then
 			${BASH_ALIASES[bcftools]} merge --print-header --force-samples $(ls $o*.vcf.gz | grep -v merged) > $o.merged.vcf
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf header merge for tophat failed"
+				return 1
+			fi
 			sed -i '$ d' $o.merged.vcf
 			cmd+=("${BASH_ALIASES[vcfmerge]} "$(ls $o*.vcf | grep -v merged)" "$(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}')" >> $o.merged.vcf")
 		fi
 	done
 	for f in ${mappingbwa[@]}; do
-        o=$(basename $f)
-        o=$outdir/vcf/bwa/${o%.*}
+		o=$(basename $f)
+		o=$outdir/vcf/bwa/${o%.*}
 		for v in $(ls $o*.vcf | grep -v merged); do
-		 	${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
-		 	${BASH_ALIASES[tabix]} -f $v.gz
+			${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf compression for bwa failed"
+				return 1
+			fi
+			${BASH_ALIASES[tabix]} -f $v.gz
 		done
 		if [[ $(ls $o*.vcf.gz | grep -v merged | wc -l) -gt 0 ]]; then
 			${BASH_ALIASES[bcftools]} merge --print-header --force-samples $(ls $o*.vcf.gz | grep -v merged) > $o.merged.vcf
+			if [[ $? -gt 0 ]]; then
+				echo ":ERROR: vcf header merge for bwa failed"
+				return 1
+			fi
 			sed -i '$ d' $o.merged.vcf
 			cmd+=("${BASH_ALIASES[vcfmerge]} "$(ls $o*.vcf | grep -v merged)" "$(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}')" >> $o.merged.vcf")
 		fi
 	done
 	#enable dev skip option if already done
 	[[ $Smerge -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: vcf merge failed"
+		return 1
+	fi
 
 	for f in ${mappingsegemehl[@]}; do
-        o=$(basename $f)
-        o=$outdir/vcf/segemehl/${o%.*}
-        export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
-        perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
-	  	${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+		o=$(basename $f)
+		o=$outdir/vcf/segemehl/${o%.*}
+		export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
+		perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: vcf merge reduction for segemehl failed"
+			return 1
+		fi
+		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
 	done
 	for f in ${mappingtophat[@]}; do
-        o=$(basename $f)
-        o=$outdir/vcf/tophat/${o%.*}
-	 	export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
-        perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
-	  	${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+		o=$(basename $f)
+		o=$outdir/vcf/tophat/${o%.*}
+		export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
+		perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: vcf merge reduction for tophat failed"
+			return 1
+		fi
+		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
 	done
 	for f in ${mappingbwa[@]}; do
-        o=$(basename $f)
-        o=$outdir/vcf/bwa/${o%.*}
-	 	export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
-        perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
-	  	${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
+		o=$(basename $f)
+		o=$outdir/vcf/bwa/${o%.*}
+			export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
+		perl -lane '$F[6]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[6]); $F[6]="." unless $F[6]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
+		if [[ $? -gt 0 ]]; then
+			echo ":ERROR: vcf merge reduction for bwa failed"
+			return 1
+		fi
+		${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
 	done
 fi
 
 	echo ":INFO: fin"
+	sleep 1
 }
 
 ### main
 pwd=$PWD
-muvacdir=$(dirname $0)
+if [[ ! $MUVAC ]]; then
+	echo ":ERROR: please do: export MUVAC=/full/path/to/requiered/tools"
+	exit 1
+fi
+tooldir=$MUVAC
+muvacdir=$(cd $(dirname $0) && echo $PWD && cd $pwd)
 fq1=''
 fq2=''
 genome=''
@@ -1041,7 +1225,6 @@ threads=$( (sleep 1; echo 1) | script -e -q -c "stty rows 100; top -n 2" /dev/nu
 outdir=$pwd/results
 help=0
 verbose=0
-tooldir=$MUVAC
 make=''
 adapter=''
 nobmap=0
@@ -1155,9 +1338,6 @@ done
 
 if [[ $help -gt 0 ]]; then
 	usage
-fi
-if [[ ! $tooldir ]]; then
-	tooldir=$(cd $muvacdir && echo $PWD && cd $pwd)/tools
 fi
 
 if [[ $make ]]; then
