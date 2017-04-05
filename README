@@ -4,26 +4,29 @@ muvac is a fully multithreaded pipeline to call, merge and annotate germline var
 - trimmed using Trimmomatic,
 - corrected using Rcorrector,
 - mapped by Segemehl, TopHat2, BWA,
-- using Freebayes, HaplotypeCaller, MuTect2, Samtools, Platypus
+- using callers Freebayes, HaplotypeCaller, MuTect2, Samtools, Platypus
+- and annotation tools Annovar, SnpEff
 
 ### INSTALLATION
 1) you need to be root to install dependencies, unless already present (to check this go on with step 2)
 sudo apt-get update
 sudo apt-get install cmake install git g++ gcc make openjdk-8-jdk python-dev unzip
-2) create a directory for muvac tools installation, which can changed here (default is current working directory with absolute path $PWD)
+2) create a directory for muvac tools installation, which can be changed here (default: $PWD - absolut path of current working directory)
 mkdir -p $PWD/muvactools
 3) create a shell variable MUVAC assigned to your previous defined installation directory
 export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.0.zip
+wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.1.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.0.zip
+unzip muvac-v0.1.1.zip
 7) enter the muvac directory
-cd muvac-0.1.0
-8) install required tools for muvac
-./muvac -i all
+cd muvac-0.1.1
+8) install all tools for muvac - INFO: (optional) get annovar from here http://annovar.openbioinformatics.org/
+- use '-t <number>' option to run annotation-database indexing on <number> cpu cores (default: all) 
+- use '-no-anno' option to disable annotation functionality by skipping installation of Annovar and SnpEff
+./muvac -i all [-t <number>] [-no-anno] [-annovar http://www.openbioinformatics.org/annovar/download/xXxXxXx/annovar.latest.tar.gz]
 
 ### DOWNLOAD HG19/GRCh37.p13 and dbSNP vcf
 1) create a genome directory
@@ -35,7 +38,7 @@ mkdir -p $PWD/genomes
 - make sure to have your genome and dbSNP vcf file in the same directory
 - make sure your genome file ends with '.fa' and your dbSNP file ends with '.fa.vcf'
 - make sure the file name prefixes of your genome and dbSNP file are equal (e.g. hg19.fa and hg19.fa.vcf)
-- make sure the fasta headers in your genome are in this order and termed '>chrM' '>chr1' ... '>chr22' '>chrX' '>chrY'
+- make sure the fasta headers in your genome are named and sorted this way '>chrM' '>chr1' ... '>chr22' '>chrX' '>chrY'
 => running dlhg19 from the DOWNLOAD section will do this for you
 1) calling for help?
 ./muvac -h
@@ -52,7 +55,7 @@ mkdir -p $PWD/genomes
 1) start a screen with a unique name
 screen -S myMUVACrun
 2) run muvac
-3) detach the screen by pressing all 3 keys 'ctr+a+d'
+3) detach the screen by pressing all 3 keys 'ctrl+a+d'
 4) list screens running in background
 screen -ls
 4) resume a screen 
@@ -61,14 +64,26 @@ screen -r myMUVACrun
 ### RESULTS
 - results can be found in the vcf/(segemehl|tophat|bwa) directories
 - merged results are named *.merged.vcf
+- annotation results can be found in the annotation/(segemehl|tophat|bwa)/(annovar|snpeff) directories
 
 ### INFO: MERGED RESULTS
+- bcftools-norm is used to split multiallelic report into single reports with related genotype (GT), genotype quality (GQ) and coverage (DP)
+=> muvac returns the best variants according to GQ and DP
 - muvac returns the score columns of the first caller in alphabetic order, which is freebayes unless deactivated
 - '*.reduced.vcf' files contain only the info column of the first caller in alphabetic order, which is freebayes unless deactivated
 
-### INFO: MULTIALLELIC REPORTS
-- bcftools-norm is used to split them into single reports with related genotype (GT), genotype quality (GQ) and coverage (DP)
-=> muvac returns the best report according to GQ and DP
+### INFO: ANNOTATION RESULTS
+- Annovar (see http://annovar.openbioinformatics.org/en/latest/user-guide)
+	- gene annotations (refSeq) are named 
+		*.variant_function and *.exonic_variant_function
+	- region annotations (TFBS, miRNA/snoRNA, miRNA-BS, GWAS) are named 
+		*.hg19_(tfbsConsSites|wgRna|targetScanS|gwasCatalog) 
+	- filtered annotations (NHLBI-ESP, 1000 Genomes, ExAC, dbSNP, NSFP, ClinVar) are named 
+		*.hg19_(esp6500siv2_all|1000g2015aug_all|exac03|avsnp147|dbnsfp33a|clinvar_20170130)_dropped
+- SnpEff (see http://snpeff.sourceforge.net/SnpSift.html)
+	- gene annotations (Ensembl, TFBS, Nextprot) are named *.annotated.vcf
+	- region annotations (Ensembl promoter, Ensembl miRNA TSS) are named *.(promoter|miRNApromoter).vcf
+	- filtered annotations (ExAC, dbSNP, NSFP, ClinVar) are named *.(exac,dbsnp,dbnsfp,clinvar).vcf
 
 ### INTERMEDIATE RESULTS (in processing order)
 - qualities directory: raw read quality statistics by FastQC

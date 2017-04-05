@@ -10,18 +10,18 @@ my @chr;
 my %chrstore;
 for my $i (0..$#ARGV/2){
 	push @caller , $ARGV[$i+1+$#ARGV/2];
-    open I, '<'.$ARGV[$i] or die $!;
-    while(<I>){
-    	chomp;
-    	next if /^(#|\s+$)/;
-    	my @l = split /\s+/;
-    	unless (exists $chrstore{$l[0]}){
-    		push @chr , $l[0];
-    		$chrstore{$l[0]} = 1;
-    	}
-    	@{${$store{$l[0]}{$l[1]}}[$i]} = @l;
-    }
-    close I;
+	open I, '<'.$ARGV[$i] or die $!;
+	while(<I>){
+		chomp;
+		next if /^(#|\s+$)/;
+		my @l = split /\s+/;
+		unless (exists $chrstore{$l[0]}){
+			push @chr , $l[0];
+			$chrstore{$l[0]} = 1;
+		}
+		@{${$store{$l[0]}{$l[1]}}[$i]} = @l;
+	}
+	close I;
 }
 
 print "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t".join("\t",@caller)."\n";
@@ -38,14 +38,14 @@ for my $chr (@chr){
 		my @sortt;
 		my $ref;
 		my $alt;
-        my @set;
+		my @set;
 		for my $i (0..$#caller){
-            my $e = ${$store{$chr}{$pos}}[$i];
+			my $e = ${$store{$chr}{$pos}}[$i];
 			unless ($e){
 				$gt[$i] = './.';
 			} else {
-                push @set , $caller[$i];
-                my @l = @{$e};
+				push @set , $caller[$i];
+				my @l = @{$e};
 				for(split /;/ , $l[-3]){
 					next if $_=~/indel/i || $_=~/type=/i;
 					push @info , $caller[$i].':'.$_;
@@ -77,6 +77,6 @@ for my $chr (@chr){
 				$gt[$i] = join(':',@v);
 			}
 		}
-		print $chr."\t".$pos."\t.\t".$ref."\t".$alt."\t".$score."\t".join(';',(@scores,@refalt,@info)).';set='.($#set==$#caller ? 'Intersection' : join('-',@set))."\t".join(':',@sortt)."\t".join("\t",@gt)."\n";
+		print $chr."\t".$pos."\t.\t".$ref."\t".$alt."\t".$score."\t.\t".join(';',(@scores,@refalt,@info)).';set='.($#set==$#caller ? 'Intersection' : join('-',@set))."\t".join(':',@sortt)."\t".join("\t",@gt)."\n";
 	}
 }
