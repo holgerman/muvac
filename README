@@ -73,17 +73,17 @@ screen -r myMUVACrun
 - '*.reduced.vcf' files contain only the info column of the first caller in alphabetic order, which is freebayes unless deactivated
 
 ### INFO: ANNOTATION RESULTS
-- Annovar (see http://annovar.openbioinformatics.org/en/latest/user-guide)
-	- gene annotations (refSeq) are named 
-		*.variant_function and *.exonic_variant_function
-	- region annotations (TFBS, miRNA/snoRNA, miRNA-BS, GWAS) are named 
-		*.hg19_(tfbsConsSites|wgRna|targetScanS|gwasCatalog) 
-	- filtered annotations (NHLBI-ESP, 1000 Genomes, ExAC, dbSNP, NSFP, ClinVar) are named 
-		*.hg19_(esp6500siv2_all|1000g2015aug_all|exac03|avsnp147|dbnsfp33a|clinvar_20170130)_dropped
-- SnpEff (see http://snpeff.sourceforge.net/SnpSift.html)
-	- gene annotations (Ensembl, TFBS, Nextprot) are named *.annotated.vcf
-	- region annotations (Ensembl promoter, Ensembl miRNA TSS) are named *.(promoter|miRNApromoter).vcf
-	- filtered annotations (ExAC, dbSNP, NSFP, ClinVar) are named *.(exac,dbsnp,dbnsfp,clinvar).vcf
+1) Annovar (see http://annovar.openbioinformatics.org/en/latest/user-guide)
+- gene annotations (refSeq) are named 
+  *.variant_function and *.exonic_variant_function
+- region annotations (TFBS, miRNA/snoRNA, miRNA-BS, GWAS) are named 
+  *.hg19_(tfbsConsSites|wgRna|targetScanS|gwasCatalog) 
+- filtered annotations (NHLBI-ESP, 1000 Genomes, ExAC, dbSNP, NSFP, ClinVar) are named 
+  *.hg19_(esp6500siv2_all|1000g2015aug_all|exac03|avsnp147|dbnsfp33a|clinvar_20170130)_dropped
+2) SnpEff (see http://snpeff.sourceforge.net/SnpSift.html)
+- gene annotations (Ensembl, TFBS, Nextprot) are named *.annotated.vcf
+- region annotations (Ensembl promoter, Ensembl miRNA TSS) are named *.(promoter|miRNApromoter).vcf
+- filtered annotations (ExAC, dbSNP, NSFP, ClinVar) are named *.(exac,dbsnp,dbnsfp,clinvar).vcf
 
 ### INTERMEDIATE RESULTS (in processing order)
 - qualities directory: raw read quality statistics by FastQC
