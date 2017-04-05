@@ -83,7 +83,7 @@ screen -r myMUVACrun
 2) SnpEff (see http://snpeff.sourceforge.net/SnpSift.html)
 - gene annotations (Ensembl, TFBS, Nextprot) are named *.annotated.vcf
 - region annotations (Ensembl promoter, Ensembl miRNA TSS) are named *.(promoter|miRNApromoter).vcf
-- filtered annotations (ExAC, dbSNP, NSFP, ClinVar) are named *.(exac,dbsnp,dbnsfp,clinvar).vcf
+- filtered annotations (ExAC, dbSNP, NSFP, ClinVar) are named *.(exac|dbsnp|dbnsfp|clinvar).vcf
 
 ### INTERMEDIATE RESULTS (in processing order)
 - qualities directory: raw read quality statistics by FastQC
