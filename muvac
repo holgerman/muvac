@@ -449,7 +449,7 @@ install () {
 	# 	(echo Y; echo Y; echo Y; echo n; echo '/tmp'; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y) | ./configure		
 	# fi
 
-	if [[ $make == "annotation" ]] || [[ $make == "annovar" ]] && [[ $annovar ]] && [[ $noanno -eq 0 ]]; then
+	if [[ $make == "anno" ]] || [[ $make == "annovar" ]] && [[ $annovar ]] && [[ $noanno -eq 0 ]]; then
 		echo ":INFO: installing annovar - needs ~70gb disk space"
 		url=$annovar
 		wget $url -O $tooldir/annovar.tar.gz && tar -xzf $tooldir/annovar.tar.gz -C $tooldir && rm $tooldir/annovar.tar.gz
@@ -477,7 +477,7 @@ install () {
 		./annotate_variation.pl -buildver hg19 -downdb -webfrom annovar clinvar_20170130 humandb/
 	fi
 
-	if [[ $make == "annotation" ]] || [[ $make == "snpeff" ]] && [[ $noanno -eq 0 ]]; then
+	if [[ $make == "anno" ]] || [[ $make == "snpeff" ]] && [[ $noanno -eq 0 ]]; then
 		echo ":INFO: installing snpeff - needs ~110gb disk space"
 		url='http://sourceforge.net/projects/snpeff/files/snpEff_latest_core.zip'
 		wget $url -O $tooldir/snpeff.zip && unzip -q -o -d $tooldir $tooldir/snpeff.zip && rm $tooldir/snpeff.zip
