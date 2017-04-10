@@ -1224,7 +1224,7 @@ if [[ $noanno -eq 0 ]]; then
 		# ${BASH_ALIASES[convert2annovar]} -outfile $tooldir/annovar/example/ex2.avinput -format vcf4 -allsample -withfreq -includeinfo -comment -chrmt chrM $tooldir/annovar/example/ex2.vcf
 		#g,g,r,r,f,f '-separate -exonicsplicing -hgvs','-separate -exonicsplicing -hgvs','','','','' ensGene,knownGene,cytoBand,genomicSuperDups,1000g2015aug_eur,snp142
 		# ${BASH_ALIASES[annovar]} -thread $threads -maxgenethread $threads -csvout -outfile $tooldir/annovar/example/ex2.annotation -otherinfo -buildver hg19 -remove -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $tooldir/annovar/example/ex2.avinput $tooldir/annovar/humandb/
-        for r in ${mapper[@]}; do
+		for r in ${mapper[@]}; do
 			id=$outdir/vcf/$r
 			od=$outdir/annotation/$r/annovar
 			mkdir -p $od
@@ -1233,7 +1233,7 @@ if [[ $noanno -eq 0 ]]; then
 				i=$(basename $f)
 				o=$od/${i%.*}
 				i=$id/${i%.*}
-                ${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -remove -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/
+				${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -remove -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/
 				if [[ $? -gt 0 ]]; then
 					echo ":ERROR: annovar annotation for $r failed"
 					return 1
