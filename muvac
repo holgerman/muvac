@@ -14,8 +14,7 @@ usage() {
 	echo "v0.1.1"
 	echo ""
 	echo "INSTALLATION"
-	echo "-i       | --install             : installation into exported directory: export MUVAC=/full/path/to/requiered/tools"
-	echo "-no-anno | --no-annotation       : skips very time consuming installation of variant annotation tools annovar and snpEff"
+	echo "-i       | --install [all|anno]  : installation into exported directory: export MUVAC=/full/path/to/tools"
 	echo "-t       | --threads [value]     : threads - default: $threads"
 	echo "-annovar | --annovar [url]       : annovar download url (see http://annovar.openbioinformatics.org/)"
 	echo ""
@@ -363,7 +362,7 @@ install () {
 		fi
 	fi
 
-	# if [[ $make == "all" ]] || [[ $make == "polyphen" ]] && [[ $noanno -eq 0 ]]; then
+	# if [[ $make == "annotation" ]] || [[ $make == "polyphen" ]] && [[ $noanno -eq 0 ]]; then
 	# 	echo ":INFO: installing perl modules for polyphen"
 	# 	wget cpanmin.us -O $tooldir/cpanm
 	# 	chmod 755 $tooldir/cpanm
@@ -450,7 +449,7 @@ install () {
 	# 	(echo Y; echo Y; echo Y; echo n; echo '/tmp'; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y) | ./configure		
 	# fi
 
-	if [[ $make == "all" ]] || [[ $make == "annovar" ]] && [[ $annovar ]] && [[ $noanno -eq 0 ]]; then
+	if [[ $make == "annotation" ]] || [[ $make == "annovar" ]] && [[ $annovar ]] && [[ $noanno -eq 0 ]]; then
 		echo ":INFO: installing annovar - needs ~70gb disk space"
 		url=$annovar
 		wget $url -O $tooldir/annovar.tar.gz && tar -xzf $tooldir/annovar.tar.gz -C $tooldir && rm $tooldir/annovar.tar.gz
@@ -478,7 +477,7 @@ install () {
 		./annotate_variation.pl -buildver hg19 -downdb -webfrom annovar clinvar_20170130 humandb/
 	fi
 
-	if [[ $make == "all" ]] || [[ $make == "snpeff" ]] && [[ $noanno -eq 0 ]]; then
+	if [[ $make == "annotation" ]] || [[ $make == "snpeff" ]] && [[ $noanno -eq 0 ]]; then
 		echo ":INFO: installing snpeff - needs ~110gb disk space"
 		url='http://sourceforge.net/projects/snpeff/files/snpEff_latest_core.zip'
 		wget $url -O $tooldir/snpeff.zip && unzip -q -o -d $tooldir $tooldir/snpeff.zip && rm $tooldir/snpeff.zip
@@ -1552,12 +1551,12 @@ alias cutadapt=$tool
 
 annovar=1
 tool=$tooldir/annovar/table_annovar.pl
-if [[ -z $tool ]]; then	echo ":INFO: no annotation via annovar possible - try installation parameter: -i annovar"; annovar=0; fi
+if [[ -z $tool ]]; then	echo ":INFO: no annotation via annovar possible - try installation parameter: -i annovar -annovar <url>"; annovar=0; fi
 alias tableannovar=$tool
 alias convert2annovar=$tooldir/annovar/convert2annovar.pl
 
 tool=$tooldir/snpEff/snpEff.jar
-if [[ -z $tool ]]; then	echo ":INFO: no annotation possible - try installation parameter: -i snpeff"; noanno=1; fi
+if [[ -z $tool ]]; then	echo ":INFO: no annotation via snpeff possible - try installation parameter: -i snpeff"; noanno=1; fi
 alias snpeff="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 alias snpsift="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tooldir/snpEff/SnpSift.jar"
 

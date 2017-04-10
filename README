@@ -18,15 +18,17 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.1.zip
+wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.2.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.1.zip
+unzip muvac-v0.1.2.zip
 7) enter the muvac directory
-cd muvac-0.1.1
-8) install all tools for muvac - INFO: (optional) get annovar from here http://annovar.openbioinformatics.org/
+cd muvac-0.1.2
+8) install all tools for variant calling
+./muvac -i all
+9) (optional) install variant annotation tools for muvac 
+./muvac -i anno [-t <number>] [-annovar http://www.openbioinformatics.org/annovar/download/xXxXxXx/annovar.latest.tar.gz]
 - use '-t <number>' option to run annotation-database indexing on <number> cpu cores (default: all) 
-- use '-no-anno' option to disable annotation functionality by skipping installation of Annovar and SnpEff
-./muvac -i all [-t <number>] [-no-anno] [-annovar http://www.openbioinformatics.org/annovar/download/xXxXxXx/annovar.latest.tar.gz]
+- use '-annovar <url>' as optional option to install Annovar (get download url from here http://annovar.openbioinformatics.org/)
 
 ### DOWNLOAD HG19/GRCh37.p13 and dbSNP vcf
 1) create a genome directory
