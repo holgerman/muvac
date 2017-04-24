@@ -11,7 +11,7 @@ usage() {
 	echo ""
 	echo "DESCRIPTION"
 	echo $(basename $0)" is a multiple variant caller pipeline for germline variants"
-	echo "v0.1.1"
+	echo "v0.1.3"
 	echo ""
 	echo "INSTALLATION"
 	echo "-i       | --install [all|anno]  : installation into exported directory: export MUVAC=/full/path/to/tools"
@@ -83,6 +83,10 @@ dependencies () {
 		echo ":ERROR: dependency missing: python-dev"
 		return 1
 	fi
+	if [[ $(python -c 'import Cython.Distutils'; echo $?) -gt 0 ]]; then
+		echo ":ERROR: dependency missing: cython"
+		return 1
+	fi
 	if [[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]]; then
 		echo ":ERROR: dependency missing: java 8"
 		return 1
@@ -101,7 +105,7 @@ install () {
 		echo ":INFO: installing ncurses"
 		url='https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.0.tar.gz'
 		wget -q $url -O $tooldir/ncurses.tar.gz && tar -xzf $tooldir/ncurses.tar.gz -C $tooldir && rm $tooldir/ncurses.tar.gz
-		ncurses=$(ls -d $tooldir/ncurses-* | sort -r | head -1)
+		ncurses=$(ls -dv $tooldir/ncurses-*/ | tail -1)
 		cd $ncurses
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && make && make install
@@ -113,7 +117,7 @@ install () {
 		echo  ":INFO: installing gtextutils"
 		url='https://github.com/agordon/libgtextutils/releases/download/0.7/libgtextutils-0.7.tar.gz'
 		wget -q $url -O $tooldir/libgtextutils.tar.gz && tar -xzf $tooldir/libgtextutils.tar.gz -C $tooldir && rm $tooldir/libgtextutils.tar.gz
-		gtextutils=$(ls -d $tooldir/libgtextutils-* | sort -r | head -1)
+		gtextutils=$(ls -dv $tooldir/libgtextutils-*/ | tail -1)
 		cd $gtextutils
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && sed -i -r 's/^\s*CXXFLAGS\s*=\s*/override CXXFLAGS += /' Makefile && make CXXFLAGS="-std=c++03" && make install
@@ -125,7 +129,7 @@ install () {
 		echo ":INFO: installing zlib"
 		url='https://github.com/madler/zlib/archive/v1.2.8.tar.gz' #current version 1.2.11 is not recognized as bigger than 1.2.5 by R
 		wget -q $url -O $tooldir/zlib.tar.gz && tar -xzf $tooldir/zlib.tar.gz -C $tooldir && rm $tooldir/zlib.tar.gz
-		zlib=$(ls -d $tooldir/zlib-* | sort -r | head -1)
+		zlib=$(ls -dv $tooldir/zlib-*/ | tail -1)
 		cd $zlib 
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && make && make install
@@ -134,15 +138,15 @@ install () {
 			return 1
 		fi
 	fi
-	ncurses=$(ls -d $tooldir/ncurses-* | sort -r | head -1)
-	gtextutils=$(ls -d $tooldir/libgtextutils-* | sort -r | head -1)
-	zlib=$(ls -d $tooldir/zlib-* | sort -r | head -1)
+	ncurses=$(ls -dv $tooldir/ncurses-*/ | tail -1)
+	gtextutils=$(ls -dv $tooldir/libgtextutils-*/ | tail -1)
+	zlib=$(ls -dv $tooldir/zlib-*/ | tail -1)
 
 	if [[ $make == "all" ]] || [[ $make == "bcftools" ]]; then
 		echo ":INFO: installing bcftools"
 		url='https://github.com/samtools/bcftools/releases/download/1.3.1/bcftools-1.3.1.tar.bz2'
 		wget -q $url -O $tooldir/bcftools.tar.bz2 && tar -xjf $tooldir/bcftools.tar.bz2 -C $tooldir && rm $tooldir/bcftools.tar.bz2
-		cd $(ls -d $tooldir/bcftools-* | sort -r | head -1)
+		cd $(ls -dv $tooldir/bcftools-*/ | tail -1)
 		make clean;
 		make
 		if [[ $? -gt 0 ]]; then
@@ -211,7 +215,7 @@ install () {
 		echo ":INFO: installing fastx_toolkit"
 		url='https://github.com/agordon/fastx_toolkit/releases/download/0.0.14/fastx_toolkit-0.0.14.tar.bz2'
 		wget -q $url -O $tooldir/fastx_toolkit.tar.bz2 && tar -xjf $tooldir/fastx_toolkit.tar.bz2 -C $tooldir && rm $tooldir/fastx_toolkit.tar.bz2
-		cd $(ls -d $tooldir/fastx_toolkit-* | sort -r | head -1) 
+		cd $(ls -dv $tooldir/fastx_toolkit-*/ | tail -1)
 		rm -rf built; mkdir built 
 		export GTEXTUTILS_CFLAGS="-I$gtextutils/built/include/gtextutils/gtextutils -I$gtextutils/libgtextutils-0.7/built/include/gtextutils -I$gtextutils/built/include"
 		export GTEXTUTILS_LIBS="-L$gtextutils/built/lib"
@@ -244,7 +248,7 @@ install () {
 		maven=$(ls $tooldir/apache-maven-*/bin/mvn | sort -r | head -1)
 		url='https://github.com/broadgsa/gatk-protected/archive/3.7.tar.gz'
 		wget -q $url -O $tooldir/gatk.tar.gz && tar -xzf $tooldir/gatk.tar.gz -C $tooldir && rm $tooldir/gatk.tar.gz
-		cd $(ls -d $tooldir/gatk-* | sort -r | head -1) 
+		cd $(ls -dv $tooldir/gatk-*/ | tail -1)
 		$maven clean; $maven -T $threads verify
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: gatk installation failed"
@@ -253,10 +257,10 @@ install () {
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "tophat" ]]; then
-		echo ":INFO: installing bowte2"
+		echo ":INFO: installing bowtie2"
 		url='https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.0/bowtie2-2.3.0-source.zip'
 		wget -q $url -O $tooldir/bowtie2.zip && unzip -q -o -d $tooldir $tooldir/bowtie2.zip && rm $tooldir/bowtie2.zip
-		cd $(ls -d $tooldir/bowtie2-* | sort -r | head -1)
+		cd $(ls -dv $tooldir/bowtie2-*/ | tail -1)
 		make NO_TBB=1
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: bowtie2 installation for tophat2 failed"
@@ -275,7 +279,7 @@ install () {
 		echo ":INFO: installing bwa"
 		url='https://github.com/lh3/bwa/releases/download/v0.7.15/bwa-0.7.15.tar.bz2'
 		wget -q $url -O $tooldir/bwa.tar.bz2 && tar -xjf $tooldir/bwa.tar.bz2 -C $tooldir && rm $tooldir/bwa.tar.bz2
-		cd $(ls -d $tooldir/bwa-* | sort -r | head -1)
+		cd $(ls -dv $tooldir/bwa-*/ | tail -1)
 		make clean; sed -i -r 's/^\s*CFLAGS\s*=\s*/override CFLAGS += /' Makefile && make CFLAGS="-I$zlib/built/include/ -L$zlib/built/lib"
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: bwa installation failed"
@@ -287,7 +291,7 @@ install () {
 		echo ":INFO: installing segemehl"
 		# url='http://www.bioinf.uni-leipzig.de/Software/segemehl/segemehl_0_2_0.tar.gz'
 		# wget -q $url -O $tooldir/segemehl.tar.gz && tar -xzf $tooldir/segemehl.tar.gz -C $tooldir && rm $tooldir/segemehl.tar.gz
-		# cd $(ls -d $tooldir/segemehl*/segemehl | sort -r | head -1) && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile
+		# cd $(ls -dv $tooldir/segemehl*/segemehl | tail -1) && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile
 		# make clean; make all PREFIX=$PWD CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib"
 		# if [[ $? -gt 0 ]]; then
 		# 	echo "segemehl installation failed"
@@ -304,31 +308,32 @@ install () {
 		echo ":INFO: installing samtools"
 		url='https://github.com/samtools/samtools/releases/download/1.3.1/samtools-1.3.1.tar.bz2'
 		wget -q $url -O $tooldir/samtools.tar.bz2 && tar -xjf $tooldir/samtools.tar.bz2 -C $tooldir && rm $tooldir/samtools.tar.bz2
-		cd $(ls -d $tooldir/samtools-*/ | sort -r | head -1)
+		cd $(ls -dv $tooldir/samtools-*/ | tail -1)
 		rm -rf built; mkdir built
 		make clean; ./configure --prefix=$PWD/built CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib" && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile &&  make CFLAGS="-fPIC -I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib" && make install
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: samtools installation failed"
 			return 1
 		fi
-		cd $(ls -d htslib-*/ | sort -r | head -1)
+		cd $(ls -dv htslib-*/ | tail -1)
 		make && make install
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: htslib installation failed"
 			return 1
 		fi
 	fi
-	samtools=$(ls -d $tooldir/samtools-* | sort -r | head -1)
+	samtools=$(ls -dv $tooldir/samtools-*/ | tail -1)
 
 	if [[ $make == "all" ]] || [[ $make == "platypus" ]]; then
 		echo ":INFO: installing platypus"
+		cd $tooldir
 		git clone https://github.com/andyrimmer/Platypus.git
 		cd Platypus
-		make clean;
+		make clean
 		export C_INCLUDE_PATH=$samtools/built/include
 		export LIBRARY_PATH=$samtools/built/lib
 		export LD_LIBRARY_PATH=$samtools/built/lib
-		make PREFIX=$PWD && chmod 755 $bin/Platypus.py
+		make PREFIX=$PWD && chmod 755 bin/Platypus.py
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: platypus installation failed"
 			return 1
@@ -339,7 +344,7 @@ install () {
 		echo ":INFO: installing rcorrector"
 		url=https://github.com/mourisl/Rcorrector/archive/v1.0.2.tar.gz
 		wget -q $url -O $tooldir/rcorrector.tar.gz && tar -xzf $tooldir/rcorrector.tar.gz -C $tooldir && rm $tooldir/rcorrector.tar.gz
-		cd $(ls -d $tooldir/Rcorrector-*/ | sort -r | head -1)
+		cd $(ls -dv $tooldir/Rcorrector-*/ | tail -1)
 		url=https://github.com/gmarcais/Jellyfish/releases/download/v2.2.4/jellyfish-2.2.4.tar.gz
 		wget -q $url -O jellyfish.tar.gz
 		sed -i '/wget/d' Makefile		
@@ -1316,8 +1321,8 @@ muvacdir=$(cd $(dirname $0) && echo $PWD && cd $pwd)
 fq1=''
 fq2=''
 genome=''
-threads=$( (sleep 1; echo 1) | script -e -q -c "stty rows 100; top -n 2" /dev/null | grep -E 'Cpu[0-9]+' | awk '$3+$5<40{print}' | wc -l)
-memory=$(script -e -q -c "stty rows 100; top -n 1" /dev/null | grep 'KiB Mem' | awk '{printf("%d",$6/1024/1024)}')
+threads=$( (sleep 1; echo 1) | script -e -q -c "stty rows 1000; top -n 2" /dev/null | grep -E 'Cpu[0-9]+' | awk '$3+$5<40{print}' | wc -l)
+memory=$(script -e -q -c "stty rows 1000; top -n 1" /dev/null | grep 'KiB Mem' | awk '{printf("%d",$6/1024/1024)}')
 outdir=$pwd/results
 help=0
 verbose=0
@@ -1570,7 +1575,7 @@ alias snpsift="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tooldir/sn
 
 export PYTHONPATH=$tooldir/cutadapt/lib/python2.7/site-packages:$PYTHONPATH
 export threads
-samtools=$(ls -d $tooldir/samtools-* | sort -r | head -1)
+samtools=$(ls -dv $tooldir/samtools-*/ | tail -1)
 export C_INCLUDE_PATH=$samtools/built/include:$C_INCLUDE_PATH
 export LD_LIBRARY_PATH=$samtools/built/lib:$LD_LIBRARY_PATH
 
