@@ -10,8 +10,8 @@ usage() {
 	echo $(basename $0)" -1 [PATH] -g [PATH] -o [PATH]"
 	echo ""
 	echo "DESCRIPTION"
-	echo $(basename $0)" is a multiple variant caller pipeline for germline variants"
-	echo "v0.1.3"
+	echo $(basename $0)" is a multiple variant caller and annotation pipeline for germline variants"
+	echo "v0.1.4"
 	echo ""
 	echo "INSTALLATION"
 	echo "-i       | --install [all|anno]  : installation into exported directory: export MUVAC=/full/path/to/tools"
@@ -46,11 +46,7 @@ usage() {
 	exit 0
 }
 
-dependencies () {
-	if [[ $(bash -version | head -1 | awk '{if($0~/version\s+4\.3/){print 1}else{print 0}}') -eq 0 ]]; then
-		echo ":ERROR: dependency missing: bash 4.3"
-		return 1
-	fi
+installdependencies () {
 	if [[ $(make -h &> /dev/null; echo $?) -gt 0 ]]; then
 		echo ":ERROR: dependency missing: make"
 		return 1
@@ -75,22 +71,25 @@ dependencies () {
 		echo ":ERROR: dependency missing: unzip"
 		return 1
 	fi
-	if [[ $(python --version 2>&1 | grep -c '2.7') -ne 1 ]]; then
-		echo ":ERROR: dependency missing: python 2.7"
-		return 1
-	fi
-	if [[ ! -e /usr/include/python2.7/Python.h ]]; then
-		echo ":ERROR: dependency missing: python-dev"
-		return 1
-	fi
 	if [[ $(python -c 'import Cython.Distutils'; echo $?) -gt 0 ]]; then
 		echo ":ERROR: dependency missing: cython"
 		return 1
 	fi
-	if [[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]]; then
-		echo ":ERROR: dependency missing: java 8"
-		return 1
-	fi
+}
+
+rundependencies () {
+    if [[ $(bash -version | head -1 | perl -lane 'if ($_=~/version\s+4\.(\d+)/){if($1>=3){print 1}else{print 0}}else{print 0}') -eq 0 ]]; then
+        echo ":ERROR: dependency missing: bash 4.3"
+        return 1
+    fi
+    if [[ ! -e /usr/include/python2.7/Python.h ]]; then
+        echo ":ERROR: dependency missing: python-dev"
+        return 1
+    fi
+    if [[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]]; then
+        echo ":ERROR: dependency missing: java 8"
+        return 1
+    fi
 }
 
 install () {
@@ -1448,12 +1447,13 @@ if [[ $help -gt 0 ]]; then
 	usage
 fi
 
-dependencies
+rundependencies
 if [[ $? -gt 0 ]]; then
 	exit 1
 fi
 
 if [[ $make ]]; then
+    installdependencies
 	echo ":INFO: installation started. please be patient. check logs via: tail -f $tooldir/install.log"
 	echo '' > $tooldir/install.log
 	if [[ $verbose -gt 0 ]]; then 

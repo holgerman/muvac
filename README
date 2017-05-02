@@ -18,11 +18,11 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.3.zip
+wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.4.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.3.zip
+unzip muvac-v0.1.4.zip
 7) enter the muvac directory
-cd muvac-0.1.3
+cd muvac-0.1.4
 8) install all tools for variant calling
 ./muvac -i all
 9) (optional) install variant annotation tools for muvac 
