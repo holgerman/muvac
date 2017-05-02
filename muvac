@@ -290,13 +290,10 @@ install () {
 		echo ":INFO: installing segemehl"
 		# url='http://www.bioinf.uni-leipzig.de/Software/segemehl/segemehl_0_2_0.tar.gz'
 		# wget -q $url -O $tooldir/segemehl.tar.gz && tar -xzf $tooldir/segemehl.tar.gz -C $tooldir && rm $tooldir/segemehl.tar.gz
-		# cd $(ls -dv $tooldir/segemehl*/segemehl | tail -1) && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile
-		# make clean; make all PREFIX=$PWD CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib"
-		# if [[ $? -gt 0 ]]; then
-		# 	echo "segemehl installation failed"
-		# 	return 1
-		# fi
 		cp -r $muvacdir/segemehl_0_3_0 $tooldir
+		cd $(ls -dv $tooldir/segemehl_*/ | tail -1)
+		sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile
+		make clean; make CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib"
 		if [[ $? -gt 0 ]]; then
 			echo ":ERROR: segemehl installation failed"
 			return 1
@@ -615,7 +612,7 @@ if [[ $notrim -eq 0 ]]; then
 		for i in $(seq 0 $((${#fastq1[@]}-1))); do
 			o1=$outdir/trimmed/$(basename ${fastq1[$i]})
 			o2=$outdir/trimmed/$(basename ${fastq2[$i]})
-			cmd+=("${BASH_ALIASES[trimmomatic]} PE -threads $threads -phred33 -trimlog $o.log ${fastq1[$i]} ${fastq2[$i]} $o1 $o1.singletons $o2 $o2.singletons SLIDINGWINDOW:7:20 MINLEN:20\n")
+			cmd+=("${BASH_ALIASES[trimmomatic]} PE -threads $threads -phred33 -trimlog $o1.log ${fastq1[$i]} ${fastq2[$i]} $o1 $o1.singletons $o2 $o2.singletons SLIDINGWINDOW:7:20 MINLEN:20\n")
 			fastq1[$i]=$o1
 			fastq2[$i]=$o2
 		done

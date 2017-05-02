@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
   Uint filebinbasenamelen=0, //splitfilebasenamelen=0, 
        clipseqlen3=0, dmno=0, desclen, headerlen;
   char oldch, newch, *qfbase, *splitfilebasename = NULL, *filebinbasename=NULL, 
-    *version, *clipseq3=NULL, **header, *desc, *adapter=NULL, *buffer, *token;
+       *version, *clipseq3=NULL, **header, *desc, *adapter=NULL;
   unsigned int *suflinktable,
                counter=0; 
   unsigned char index = 0,
@@ -229,6 +229,7 @@ int main(int argc, char** argv) {
   time_t startsuf, endsuf;
   time_t startmatch, endmatch;
 
+  fasta_t   **reads;  
   pthread_t *threads;
   pthread_t clockthread;
   checkthreadinfo_t ch_info;
@@ -405,11 +406,22 @@ int main(int argc, char** argv) {
       if ((manopt_isset(&optset, 'i', NULL) ^ manopt_isset(&optset, 'x', NULL)) &&
           (manopt_isset(&optset, 'j', NULL) ^ manopt_isset(&optset, 'y', NULL))){
         info.bisulfitemerging = 1;
+
+
+        if (!manopt_isset(&optset, 'o', "outfile") && !manopt_isset(&optset, 'B', "filebins")){
+          manopt_help(&optset, "bisulfite mapping with two runs may not be used \
+              when output is dumped to stdout.\n");
+        }        
       }
       if (info.nomatchname != NULL){
         NFO("Warning: file with unmapped reads may contain reads that are mapped \
             in one but not in both matching runs.\n", NULL);
       }
+      /* only required with bisulfite merging but necessary for subsequent analyses in any case */
+      /*      if (manopt_isset(&optset, 'K', "SEGEMEHL")){
+              manopt_help(&optset, "please use SAM format with bisulfite mapping\n");
+              }
+              */
       if (manopt_isset(&optset, 'S', "splits")){
         manopt_help(&optset, "split alignments not yet supported with bisulfite mapping\n");
       }
@@ -448,7 +460,6 @@ int main(int argc, char** argv) {
   if(info.readgroupfile) {
     head = sam_readFile(info.readgroupfile);
   } else  {
-    //no readgroup file provided
     head = ALLOCMEMORY(NULL, NULL, samheader_t, 1);
     sam_initHeader(head);
     char *tempid;
@@ -456,18 +467,11 @@ int main(int argc, char** argv) {
       tempid = ALLOCMEMORY(NULL, NULL, char, strlen(info.readgroupid)+1);
       memmove(tempid, info.readgroupid, strlen(info.readgroupid));
       tempid[strlen(info.readgroupid)] = '\0';
-    } else {
-      MSG("assigning all reads to default read group 'A1'.");
+    } else { 
       tempid = ALLOCMEMORY(NULL, NULL, char, 3);
       memmove(tempid, "A1\0", 3);
     }
-    
-    char *tempgroupdefaults;
-    const char *readgroupinfodefault = "\tSM:sample1\tLB:library1\tPU:unit1\tPL:illumina\0";
-    NFO("additional read group default values '%s'", readgroupinfodefault);
-    tempgroupdefaults = ALLOCMEMORY(NULL, NULL, char, strlen(readgroupinfodefault));
-    memmove(tempgroupdefaults, readgroupinfodefault, strlen(readgroupinfodefault));
-    sam_addReadGroup(head, tempid, tempgroupdefaults);
+    sam_addReadGroup(head, tempid, NULL);
   }
 
   if(head->nrgroups != 1) {
@@ -1014,7 +1018,6 @@ int main(int argc, char** argv) {
 
     /* merge thread-bins */
     if (info.bisulfitemerging){
-
       bl_fileBinDomainsCloseAll(info.bins);
       bins = NULL;
 
@@ -1032,19 +1035,20 @@ int main(int argc, char** argv) {
           exit(-1);
         }
       }
-      /* reset mapping stat */
-      memset(info.stats, 0, sizeof(mappingstats_t));
-
-      /* add reference seqs to sam header for merging  */
-      buffer = se_SAMHeader(space, &info, -1);
-      token = strtok(buffer, "\n");
-      while(token != NULL){
-	head = sam_getHeader(head, token);
-	token = strtok(NULL, "\n");
+      if(info.index) {
+        reads = bl_fastxChopIndex(space, info.reads, info.threadno);
+      } else {
+        reads = bl_fastaChop(space, info.reads, info.threadno);
       }
-      /* do bisulfite merging and cleanup */
-      se_mergeBisulfiteBins(info.bins, info.reads, head, info.dev, bins, 1, info.bestonly, info.stats);
-      FREEMEMORY(space, buffer);
+
+      se_mergeBisulfiteBins(space, info.bins, reads, info.dev, bins, 1, info.bestonly);
+
+      for (i=0; i < info.threadno; i++) {
+        bl_fastxDestructSequence(space, reads[i]);
+        bl_fastxDestructChunkIndex(space, reads[i]);
+        FREEMEMORY(space, reads[i]);
+      }      
+      FREEMEMORY(space, reads);
 
       /* destruct bins */
       bl_fileBinDomainsDestruct(space, info.bins);
