@@ -11,7 +11,7 @@ usage() {
 	echo ""
 	echo "DESCRIPTION"
 	echo $(basename $0)" is a multiple variant caller and annotation pipeline for germline variants"
-	echo "v0.1.4"
+	echo "v0.1.5"
 	echo ""
 	echo "INSTALLATION"
 	echo "-i       | --install [all|anno]  : installation into exported directory: export MUVAC=/full/path/to/tools"
@@ -42,7 +42,7 @@ usage() {
 	echo "-no-st    | --no-samtools        : disables variant caller Samtools/Bcftools"
 	echo "-no-pp    | --no-platypus        : disables variant caller Platypus"
 	echo "-no-anno  | --no-annotation      : disables variant annotation by Annovar and SnpEff"
-	#echo "-slit -Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge"
+	#echo "-split -Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge -Savar -Snpeff"
 	exit 0
 }
 
@@ -1234,16 +1234,26 @@ if [[ $noanno -eq 0 ]]; then
 				i=$(basename $f)
 				o=$od/${i%.*}
 				i=$id/${i%.*}
-				${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -remove -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: annovar annotation for $r failed"
-					return 1
+				if [[ $Savar -eq 0 ]]; then
+					/usr/bin/time -v ${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/ 2>&1 | tee $outdir/tmp/annovarfiles
+					if [[ $? -gt 0 ]]; then
+						echo ":ERROR: annovar annotation for $r failed"
+						return 1
+					fi
+                    for temp in $(grep -E 'written\s+to' $outdir/tmp/annovarfiles | grep -Eo "$outdir/tmp/[^[:space:],]+" | grep "temp."); do
+                        ot=$(basename $temp)
+                        ot=$o.${ot#*.}
+                        mv $temp $ot
+                    done
+				else
+					echo -e "${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/\n"
 				fi
 			done
 		done
 	fi
 
 	echo ":INFO: variant annotation - snpeff"
+	cmd=()
 	for r in ${mapper[@]}; do
 		id=$outdir/vcf/$r
 		od=$outdir/annotation/$r/snpeff
@@ -1253,22 +1263,29 @@ if [[ $noanno -eq 0 ]]; then
 			i=$(basename $f)
 			o=$od/${i%.*}
 			i=$id/${i%.*}
-			${BASH_ALIASES[snpeff]} ann -nodownload -v -t -lof GRCh37.75 $i.merged.reduced.vcf.gz > $o.annotated.vcf
-			if [[ $? -gt 0 ]]; then
-				echo ":ERROR: snpeff annotation for $r failed"
-				return 1
+			if [[ $Snpeff -eq 0 ]]; then
+				/usr/bin/time -v ${BASH_ALIASES[snpeff]} ann -nodownload -v -t -lof GRCh37.75 $i.merged.reduced.vcf.gz > $o.annotated.vcf
+				if [[ $? -gt 0 ]]; then
+					echo ":ERROR: snpeff annotation for $r failed"
+					return 1
+				fi
+			else
+				echo -e "${BASH_ALIASES[snpeff]} ann -nodownload -v -t -lof GRCh37.75 $i.merged.reduced.vcf.gz > $o.annotated.vcf\n"
 			fi
-			${BASH_ALIASES[snpsift]} annotate -noDownload -v $tooldir/snpEff/data/clinvar.vcf.gz $o.annotated.vcf > $o.clinvar.vcf
-			${BASH_ALIASES[snpsift]} annotate -noDownload -v $genome.vcf.gz $o.annotated.vcf > $o.dbsnp.vcf
-			${BASH_ALIASES[snpsift]} annotate -noDownload  -v $tooldir/snpEff/data/exac.vcf.gz $o.annotated.vcf > $o.exac.vcf
-			${BASH_ALIASES[snpsift]} intervals -noDownload -v -i $o.annotated.vcf $tooldir/snpEff/data/promoter.bed > $o.promoter.vcf
-			${BASH_ALIASES[snpsift]} intervals -noDownload -v -i $o.annotated.vcf $tooldir/snpEff/data/miRNApromoter.bed > $o.miRNApromoter.vcf
-			${BASH_ALIASES[snpsift]} dbnsfp -noDownload -v -db $tooldir/snpEff/data/dbNSFP.txt.gz $o.annotated.vcf > $o.dbnsfp.vcf
-			${BASH_ALIASES[snpsift]} gwascat -noDownload -v -db $tooldir/snpEff/data/gwas.txt $o.annotated.vcf > $o.gwas.vcf
+			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload -v $tooldir/snpEff/data/clinvar.vcf.gz $o.annotated.vcf > $o.clinvar.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload -v $genome.vcf.gz $o.annotated.vcf > $o.dbsnp.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload  -v $tooldir/snpEff/data/exac.vcf.gz $o.annotated.vcf > $o.exac.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} intervals -noDownload -v -i $o.annotated.vcf $tooldir/snpEff/data/promoter.bed > $o.promoter.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} intervals -noDownload -v -i $o.annotated.vcf $tooldir/snpEff/data/miRNApromoter.bed > $o.miRNApromoter.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} dbnsfp -noDownload -v -db $tooldir/snpEff/data/dbNSFP.txt.gz $o.annotated.vcf > $o.dbnsfp.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} gwascat -noDownload -v -db $tooldir/snpEff/data/gwas.txt $o.annotated.vcf > $o.gwas.vcf\n")
 		done
 	done
-
-
+	[[ $Snpeff -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
+	if [[ $? -gt 0 ]]; then
+		echo ":ERROR: snpsift failed"
+		return 1
+	fi
 
 	# echo ":INFO: variant annotation - polyphen"
 	# cmd=()
@@ -1318,7 +1335,7 @@ fq1=''
 fq2=''
 genome=''
 threads=$( (sleep 1; echo 1) | script -e -q -c "stty rows 1000; top -n 2" /dev/null | grep -E 'Cpu[0-9]+' | awk '$3+$5<40{print}' | wc -l)
-memory=$(script -e -q -c "stty rows 1000; top -n 1" /dev/null | grep 'KiB Mem' | awk '{printf("%d",$6/1024/1024)}')
+memory=$(script -e -q -c "stty rows 1000; top -b -n 1" /dev/null | grep 'KiB Mem' | perl -lane '$_=~/(\d+)\D+(\d+)\D+(\d+)/; printf("%d",($1-$3)/1024/1024)')
 outdir=$pwd/results
 help=0
 verbose=0
@@ -1363,6 +1380,8 @@ Sst=0
 Spp=0
 Smerge=0
 split=0
+Savar=0
+Snpeff=0
 
 checkopt (){
 	opt=$1
@@ -1407,6 +1426,8 @@ checkopt (){
 	-Sst) Sst=1; return 0;;
 	-Spp) Spp=1; return 0;;
 	-Smerge) Smerge=1; return 0;;
+	-Savar) Savar=1; return 0;;
+	-Snpeff) Snpeff=1; return 0;;
 	esac
 	if [[ ! $arg =~ ^- ]]; then
 		case $opt in

@@ -18,11 +18,11 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.4.zip
+wget https://github.com/rna-hta-jena/gorap/archive/muvac-v0.1.5.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.4.zip
+unzip muvac-v0.1.5.zip
 7) enter the muvac directory
-cd muvac-0.1.4
+cd muvac-0.1.5
 8) install all tools for variant calling
 ./muvac -i all
 9) (optional) install variant annotation tools for muvac 
@@ -82,6 +82,7 @@ screen -r myMUVACrun
   *.hg19_(tfbsConsSites|wgRna|targetScanS|gwasCatalog) 
 - filtered annotations (NHLBI-ESP, 1000 Genomes, ExAC, dbSNP, NSFP, ClinVar) are named 
   *.hg19_(esp6500siv2_all|1000g2015aug_all|exac03|avsnp147|dbnsfp33a|clinvar_20170130)_dropped
+- merged annotations are named *.hg19_multianno.vcf
 2) SnpEff (see http://snpeff.sourceforge.net/SnpSift.html)
 - gene annotations (Ensembl, TFBS, Nextprot) are named *.annotated.vcf
 - region annotations (Ensembl promoter, Ensembl miRNA TSS) are named *.(promoter|miRNApromoter).vcf
