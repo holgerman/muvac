@@ -6,94 +6,76 @@ trap "trap - SIGTERM && kill -PIPE -- -$$ &> /dev/null" INT TERM SIGINT SIGTERM 
 # set -e
 
 usage() {
-	echo "SYNOPSIS"
-	echo $(basename $0)" -1 [PATH] -g [PATH] -o [PATH]"
-	echo ""
-	echo "DESCRIPTION"
-	echo $(basename $0)" is a multiple variant caller and annotation pipeline for germline variants"
-	echo "v0.1.5"
-	echo ""
-	echo "INSTALLATION"
-	echo "-i       | --install [all|anno]  : installation into exported directory: export MUVAC=/full/path/to/tools"
-	echo "-t       | --threads [value]     : threads - default: $threads"
-	echo "-annovar | --annovar [url]       : annovar download url (see http://annovar.openbioinformatics.org/)"
-	echo ""
-	echo "OPTIONS"
-	echo "-1 | --fastq1 [path,path,..]     : fastq input - single or first pair, comma seperated"
-	echo "-2 | --fastq2 [path,path,..]     : fastq input - optional. second pair, comma seperated"
-	echo "-g | --genome [path]             : genome fasta with suffig '.fa'"
-	echo "-a | --adapter [string]          : adapter sequence"
-	echo "-o | --out [path]                : output directory - default: $PWD/results"
-	echo "-t | --threads [value]           : threads - default: $threads"
-	echo "-l | --log [path]                : log file - default: $PWD/results/run.log "
-	echo "-h | --help                      : prints this message"
-	echo "-v | --verbose                   : enable verbose mode"
-	echo "-r | --remove                    : finally remove intermediate results and temporary files"
-	echo ""
-	echo "-no-pre   | --no-preprocessing   : disables quality analysis, adapter clipping, error correction"
-	echo "-no-trim  | --no-trimming        : disables quality trimming"
-	echo "-no-bmap  | --no-bwa             : disables mapping by BWA"
-	echo "-no-tmap  | --no-tophat          : disables mapping by TopHat2"
-	echo "-no-smap  | --no-segemehl        : disables mapping by Segemehl"
-	echo "-no-recal | --no-recalibration   : disables GATK best practice realignment and base recalibration"
-	echo "-no-hc    | --no-haplotypecaller : disables variant caller GATK HaplotypeCaller"
-	echo "-no-mu    | --no-mutect          : disables variant caller GATK MuTect2"
-	echo "-no-fb    | --no-freebayes       : disables variant caller Freebayes"
-	echo "-no-st    | --no-samtools        : disables variant caller Samtools/Bcftools"
-	echo "-no-pp    | --no-platypus        : disables variant caller Platypus"
-	echo "-no-anno  | --no-annotation      : disables variant annotation by Annovar and SnpEff"
-	#echo "-split -Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge -Savar -Snpeff"
+	cat << EOF
+DESCRIPTION
+$(basename $0) is a multiple variant caller and annotation pipeline for germline variants
+
+VERSION
+v0.1.6
+
+SYNOPSIS
+$(basename $0) -1 [PATH] -g [PATH] -o [PATH]
+
+INSTALLATION OPTIONS
+-i       | --install [all|anno]  : installation into exported directory: export MUVAC=/full/path/to/tools
+-t       | --threads [value]     : threads - automatically predicted default: $threads
+-annovar | --annovar [url]       : annovar download url (see http://annovar.openbioinformatics.org/)
+
+OPTIONS
+-1 | --fastq1 [path,path,..]     : fastq input - single or first pair, comma seperated
+-2 | --fastq2 [path,path,..]     : fastq input - optional. second pair, comma seperated
+-g | --genome [path]             : genome fasta with suffig '.fa'
+-a | --adapter [string]          : adapter sequence
+-o | --out [path]                : output directory - default: $PWD/results
+-t | --threads [value]           : threads - automatically predicted default: $threads
+-l | --log [path]                : log file - default: $PWD/results/run.log
+-h | --help                      : prints this message
+-v | --verbose                   : enable verbose mode
+-r | --remove                    : finally remove intermediate results and temporary files
+
+-no-pre   | --no-preprocessing   : disables quality analysis, adapter clipping, error correction
+-no-trim  | --no-trimming        : disables quality trimming
+-no-bmap  | --no-bwa             : disables mapping by BWA
+-no-tmap  | --no-tophat          : disables mapping by TopHat2
+-no-smap  | --no-segemehl        : disables mapping by Segemehl
+-no-recal | --no-recalibration   : disables GATK best practice realignment and base recalibration
+-no-hc    | --no-haplotypecaller : disables variant caller GATK HaplotypeCaller
+-no-mu    | --no-mutect          : disables variant caller GATK MuTect2
+-no-fb    | --no-freebayes       : disables variant caller Freebayes
+-no-st    | --no-samtools        : disables variant caller Samtools/Bcftools
+-no-pp    | --no-platypus        : disables variant caller Platypus
+-no-anno  | --no-annotation      : disables variant annotation by Annovar and SnpEff
+
+REFERENCES
+muvac is free software for non-commercial use
+(c) Konstantin Riege
+konstantin{a}bioinf{.}uni-leipzig{.}de
+
+EOF
+#-split -Sq -Sa -Sconv -Str -Scor -Sms -Smt -Smb -Sort -Srg -Srmd -Sreo -Sret -Srea -Srec -Sprint -Shc -Smu -Sfb -Sst -Spp -Smerge -Savar -Snpeff
 	exit 0
 }
 
 installdependencies () {
-	if [[ $(make -h &> /dev/null; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: make"
-		return 1
-	fi
-	if [[ $(cmake -h &> /dev/null; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: cmake"
-		return 1
-	fi
-	if [[ $(git --version &> /dev/null; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: git"
-		return 1
-	fi
-	if [[ $(g++ -v &> /dev/null; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: g++"
-		return 1
-	fi
-	if [[ $(gcc -v &> /dev/null; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: gcc"
-		return 1
-	fi
-	if [[ $(unzip -h &> /dev/null; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: unzip"
-		return 1
-	fi
-	if [[ $(python -c 'import Cython.Distutils'; echo $?) -gt 0 ]]; then
-		echo ":ERROR: dependency missing: cython"
-		return 1
-	fi
+	[[ $(make -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: make" && return 1
+	[[ $(cmake -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: cmake" && return 1
+	[[ $(git --version &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: git" && return 1
+	[[ $(g++ -v &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: g++" && return 1
+	[[ $(gcc -v &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: gcc" && return 1
+	[[ $(unzip -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: unzip" && return 1
+	[[ $(python -c 'import Cython.Distutils'; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: cython" && return 1
+	return 0
 }
 
 rundependencies () {
-    if [[ $(bash -version | head -1 | perl -lane 'if ($_=~/version\s+4\.(\d+)/i){if($1>=3){print 1}else{print 0}}else{print 0}') -eq 0 ]]; then
-        echo ":ERROR: dependency missing: bash 4.3"
-        return 1
-    fi
-    if [[ ! -e /usr/include/python2.7/Python.h ]]; then
-        echo ":ERROR: dependency missing: python-dev"
-        return 1
-    fi
-    if [[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]]; then
-        echo ":ERROR: dependency missing: java 8"
-        return 1
-    fi
+	[[ $(bash -version | head -1 | perl -lane 'if ($_=~/version\s+4\.(\d+)/i){if($1>=3){print 1}else{print 0}}else{print 0}') -eq 0 ]] && echo ":ERROR: dependency missing: bash 4.3" && return 1
+	[[ ! -e /usr/include/python2.7/Python.h ]] && echo ":ERROR: dependency missing: python-dev" && return 1
+	[[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]] && echo ":ERROR: dependency missing: java 8" && return 1
+	return 0
 }
 
 install () {
-	if [[ $make == "all" ]]; then
+	if [[ $make == "all" ]] || [[ $make == "update" ]]; then
 		cp $muvacdir/muvac $tooldir
 		cp $muvacdir/dlh19 $tooldir
 		cp $muvacdir/vcfmerge.pl $tooldir
@@ -108,22 +90,16 @@ install () {
 		cd $ncurses
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && make && make install
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: ncurses installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: ncurses installation failed" && return 1
 
-		echo  ":INFO: installing gtextutils"
+		echo ":INFO: installing gtextutils"
 		url='https://github.com/agordon/libgtextutils/releases/download/0.7/libgtextutils-0.7.tar.gz'
 		wget -q $url -O $tooldir/libgtextutils.tar.gz && tar -xzf $tooldir/libgtextutils.tar.gz -C $tooldir && rm $tooldir/libgtextutils.tar.gz
 		gtextutils=$(ls -dv $tooldir/libgtextutils-*/ | tail -1)
 		cd $gtextutils
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && sed -i -r 's/^\s*CXXFLAGS\s*=\s*/override CXXFLAGS += /' Makefile && make CXXFLAGS="-std=c++03" && make install
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: gtextutils installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: gtextutils installation failed" && return 1
 
 		echo ":INFO: installing zlib"
 		url='https://github.com/madler/zlib/archive/v1.2.8.tar.gz' #current version 1.2.11 is not recognized as bigger than 1.2.5 by R
@@ -132,10 +108,7 @@ install () {
 		cd $zlib 
 		rm -rf built; mkdir built 
 		make clean; ./configure --prefix=$PWD/built && make && make install
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: zlib installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: zlib installation failed" && return 1
 	fi
 	ncurses=$(ls -dv $tooldir/ncurses-*/ | tail -1)
 	gtextutils=$(ls -dv $tooldir/libgtextutils-*/ | tail -1)
@@ -148,10 +121,7 @@ install () {
 		cd $(ls -dv $tooldir/bcftools-*/ | tail -1)
 		make clean;
 		make
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: bcftools installation failed"
-			return 1
-	    fi
+		[[ $? -gt 0 ]] && echo ":ERROR: bcftools installation failed" && return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "freebayes" ]]; then
@@ -166,16 +136,15 @@ install () {
 		rm -rf build; mkdir -p build
 		cd build
 		cmake .. && make
+		[[ $? -gt 0 ]] && echo ":ERROR: bamtools installation for freebayes failed" && return 1
 		cd $tooldir/freebayes/vcflibs
 		make clean; make
 		cd $tooldir/freebayes/SeqLib
 		make clean; ./configure --prefix=$PWD && make && make install
+		[[ $? -gt 0 ]] && echo ":ERROR: seqlib installation for freebayes failed" && return 1
 		cd $tooldir/freebayes
 		make
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: freebayes installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: freebayes installation failed" && return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "fastqc" ]]; then
@@ -183,10 +152,7 @@ install () {
 		url='http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip'
 		wget -q $url -O $tooldir/fastqc.zip && unzip -q -o -d $tooldir $tooldir/fastqc.zip && rm $tooldir/fastqc.zip
 		chmod 755 $tooldir/FastQC/fastqc
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: fastqc installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: fastqc installation failed" && return 1
 		mv $tooldir/FastQC $tooldir/$($tooldir/FastQC/fastqc -v | sed 's/ /-/g')
 	fi
 
@@ -194,20 +160,14 @@ install () {
 		echo ":INFO: installing trimmomatic"
 		url='http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.36.zip'
 		wget -q $url -O $tooldir/trimmomatic.zip && unzip -q -o -d $tooldir $tooldir/trimmomatic.zip && rm $tooldir/trimmomatic.zip
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: trimmomatic installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: trimmomatic installation failed" && return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "dnapi" ]]; then
 		echo ":INFO: installing dnapi"
 		url='https://github.com/jnktsj/DNApi/archive/v1.1.tar.gz'
 		wget -q $url -O $tooldir/dnapi.tar.gz && tar -xzf $tooldir/dnapi.tar.gz -C $tooldir && rm $tooldir/dnapi.tar.gz
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: dnapi installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: dnapi installation failed" && return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "fastx_toolkit" ]]; then
@@ -219,15 +179,9 @@ install () {
 		export GTEXTUTILS_CFLAGS="-I$gtextutils/built/include/gtextutils/gtextutils -I$gtextutils/libgtextutils-0.7/built/include/gtextutils -I$gtextutils/built/include"
 		export GTEXTUTILS_LIBS="-L$gtextutils/built/lib"
 		make clean; ./configure --prefix=$PWD/built 		
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: fastx_toolkit installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: fastx_toolkit installation failed" && return 1
 		make -i && make install -i
-		if [[ ! -e built/bin/fastx_clipper ]]; then
-			echo ":ERROR: fastx_toolkit installation failed"
-			return 1
-		fi
+		[[ ! -e built/bin/fastx_clipper ]] && echo ":ERROR: fastx_toolkit installation failed" && return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "cutadapt" ]]; then
@@ -238,6 +192,7 @@ install () {
 		unset PYTHONPATH
 		wget -q https://bootstrap.pypa.io/get-pip.py -O get-pip.py && python get-pip.py --user
 		bin/pip install --user cutadapt
+		[[ $? -gt 0 ]] && echo ":ERROR: cutadapt installation failed" && return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "gatk" ]]; then
@@ -249,10 +204,7 @@ install () {
 		wget -q $url -O $tooldir/gatk.tar.gz && tar -xzf $tooldir/gatk.tar.gz -C $tooldir && rm $tooldir/gatk.tar.gz
 		cd $(ls -dv $tooldir/gatk-*/ | tail -1)
 		$maven clean; $maven -T $threads verify
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: gatk installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: gatk installation failed" return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "tophat" ]]; then
@@ -261,17 +213,11 @@ install () {
 		wget -q $url -O $tooldir/bowtie2.zip && unzip -q -o -d $tooldir $tooldir/bowtie2.zip && rm $tooldir/bowtie2.zip
 		cd $(ls -dv $tooldir/bowtie2-*/ | tail -1)
 		make NO_TBB=1
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: bowtie2 installation for tophat2 failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: bowtie2 installation for tophat2 failed" return 1
 		echo ":INFO: installing tophat2"
 		url='https://ccb.jhu.edu/software/tophat/downloads/tophat-2.1.1.Linux_x86_64.tar.gz'
 		wget -q $url -O $tooldir/tophat2.tar.gz && tar -xzf $tooldir/tophat2.tar.gz -C $tooldir && rm $tooldir/tophat2.tar.gz
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: tophat2 installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: tophat2 installation failed" return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "bwa" ]]; then
@@ -280,10 +226,7 @@ install () {
 		wget -q $url -O $tooldir/bwa.tar.bz2 && tar -xjf $tooldir/bwa.tar.bz2 -C $tooldir && rm $tooldir/bwa.tar.bz2
 		cd $(ls -dv $tooldir/bwa-*/ | tail -1)
 		make clean; sed -i -r 's/^\s*CFLAGS\s*=\s*/override CFLAGS += /' Makefile && make CFLAGS="-I$zlib/built/include/ -L$zlib/built/lib"
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: bwa installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: bwa installation failed" return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "segemehl" ]]; then
@@ -294,10 +237,7 @@ install () {
 		cd $(ls -dv $tooldir/segemehl_*/ | tail -1)
 		sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile
 		make clean; make CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib"
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: segemehl installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: segemehl installation failed" return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "samtools" ]]; then
@@ -306,17 +246,11 @@ install () {
 		wget -q $url -O $tooldir/samtools.tar.bz2 && tar -xjf $tooldir/samtools.tar.bz2 -C $tooldir && rm $tooldir/samtools.tar.bz2
 		cd $(ls -dv $tooldir/samtools-*/ | tail -1)
 		rm -rf built; mkdir built
-		make clean; ./configure --prefix=$PWD/built CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib" && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile &&  make CFLAGS="-fPIC -I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib" && make install
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: samtools installation failed"
-			return 1
-		fi
+		make clean; ./configure --prefix=$PWD/built CFLAGS="-I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib" && sed -i -r 's/^\s*(C|LD)FLAGS\s*=\s*/override \1FLAGS += /' Makefile && make CFLAGS="-fPIC -I$ncurses/built/include -I$ncurses/built/include/ncurses -I$zlib/built/include" LDFLAGS="-L$ncurses/built/lib -L$zlib/built/lib" && make install
+		[[ $? -gt 0 ]] && echo ":ERROR: samtools installation failed" return 1
 		cd $(ls -dv htslib-*/ | tail -1)
 		make && make install
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: htslib installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: htslib installation failed" return 1
 	fi
 	samtools=$(ls -dv $tooldir/samtools-*/ | tail -1)
 
@@ -330,10 +264,7 @@ install () {
 		export LIBRARY_PATH=$samtools/built/lib
 		export LD_LIBRARY_PATH=$samtools/built/lib
 		make PREFIX=$PWD && chmod 755 bin/Platypus.py
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: platypus installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: platypus installation failed" return 1
 	fi
 
 	if [[ $make == "all" ]] || [[ $make == "rcorrector" ]]; then 
@@ -345,10 +276,7 @@ install () {
 		wget -q $url -O jellyfish.tar.gz
 		sed -i '/wget/d' Makefile		
 		make clean; make
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: rcorrector installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: rcorrector installation failed" return 1
 		chmod 755 run_rcorrector.pl
 	fi
 
@@ -357,10 +285,7 @@ install () {
 		mkdir -p $tooldir/picard-2.8.2
 		url='https://github.com/broadinstitute/picard/releases/download/2.8.2/picard-2.8.2.jar'
 		wget -q $url -O $tooldir/picard-2.8.2/picard.jar
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: picard installation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: picard installation failed" return 1
 	fi
 
 	# if [[ $make == "annotation" ]] || [[ $make == "polyphen" ]] && [[ $noanno -eq 0 ]]; then
@@ -384,20 +309,11 @@ install () {
 	# 	wget $url -O $tooldir/kent.tgz && tar -xzf $tooldir/kent.tgz -C $tooldir && rm $tooldir/kent.tgz
 	# 	cd $tooldir/userApps/kent/src/lib && make 
 	# 	cd $tooldir/userApps/kent/src/utils/faSplit && make BINDIR=$PPH/bin
-	# 	if [[ $? -gt 0 ]]; then
-	# 		echo ":ERROR: ucsc kent user utilities installation failed"
-	# 		return 1
-	# 	fi
+	# 	[[ $? -gt 0 ]] && echo ":ERROR: ucsc kent user utilities installation failed" && return 1
 	# 	cd $tooldir/userApps/kent/src/blat && make BINDIR=$PPH/bin
-	# 	if [[ $? -gt 0 ]]; then
-	# 		echo ":ERROR: ucsc kent user utilities installation failed"
-	# 		return 1
-	# 	fi
+	# 	[[ $? -gt 0 ]] && echo ":ERROR: ucsc kent user utilities installation failed" && return 1
 	# 	cd $tooldir/userApps/kent/src/utils/twoBitToFa && make BINDIR=$PPH/bin
-	# 	if [[ $? -gt 0 ]]; then
-	# 		echo ":ERROR: ucsc kent user utilities installation failed"
-	# 		return 1
-	# 	fi
+	# 	[[ $? -gt 0 ]] && echo ":ERROR: ucsc kent user utilities installation failed" && return 1
 
 	# 	echo ":INFO: installing polyphen databases - needs ~200gb disk space and runs several hours/days"
 	# 	cd $PPH/nrdb
@@ -442,10 +358,7 @@ install () {
 
 	# 	cd $PPH/src
 	# 	make clean; make download && make && make install
-	# 	if [[ $? -gt 0 ]]; then
-	# 		echo ":ERROR: polyphen installation failed"
-	# 		return 1
-	# 	fi
+	# 	[[ $? -gt 0 ]] && echo ":ERROR: polyphen installation failed" && return 1
 	# 	cd $PPH
 	# 	(echo Y; echo Y; echo Y; echo n; echo '/tmp'; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y; echo Y) | ./configure		
 	# fi
@@ -530,10 +443,12 @@ progress () {
 		fi
 		sleep 1
 	done
+	return 0
 }
 
 userlog () {
 	tail -f $1 2>&1 | grep -E --line-buffered '^\s*(:INFO|:ERROR|Elapsed \(wall|Maximum resident)'
+	return 0
 }
 
 pipeline () {
@@ -544,7 +459,7 @@ if [[ $noprep -eq 0 ]]; then
 	for f in {${fastq1[@]},${fastq2[@]}}; do
 		cmd+=("${BASH_ALIASES[fastqc]} -outdir $outdir/qualities $f\n")
 	done 
-	#enable dev skip option if already done
+	#enable dev skip option -Sq if already done
 	[[ $Sq -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
 
 	if [[ $adapter ]]; then
@@ -566,21 +481,16 @@ if [[ $noprep -eq 0 ]]; then
 				fastq1[$i]=$o
 			done 
 		fi
-		#enable dev skip option if already done
+		#enable dev skip option -Sa if already done
 		[[ $Sa -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: clipping failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: clipping failed" && return 1
 	fi
 fi
 
+#enable dev skip option -Sconv if already done
 if [[ $Sconv -eq 0 ]]; then
 	phred=$(head -400 ${fastq1[0]} | awk '{if(NR%4==0) printf("%s",$0);}' | od -A n -t u1 | awk 'BEGIN{min=100;max=0;}{for(i=1;i<=NF;i++) {if($i>max) max=$i; if($i<min) min=$i;}}END{if(max<=74 && min<59) print "phred33"; else if(max>73 && min>=64) print "phred64"; else if(min>=59 && min<64 && max>73) print "solexa64"; else print "unknown";}')
-	if [[ ! $phred =~ ^phred ]]; then
-		echo ":ERROR: $phred fastq encoding - need sanger (phred33) or illumina (phred64)"
-		return 1
-	fi
+	[[ ! $phred =~ ^phred ]] && echo ":ERROR: $phred fastq encoding - need sanger (phred33) or illumina (phred64)" && return 1
 	if [[ $phred == "phred64" ]]; then
 		echo ":INFO: converting quality scores"
 		mkdir -p $outdir/converted
@@ -594,13 +504,9 @@ if [[ $Sconv -eq 0 ]]; then
 			o=$outdir/converted/$(basename ${fastq2[$i]})
 			cmd+=("${BASH_ALIASES[fastq_quality_converter]} -i $f -o $o\n")
 			fastq2[$i]=$o
-		done 
-		#enable dev skip option if already done
+		done 		
 		echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {}
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: quality reencoding failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: quality reencoding failed" && return 1
 	fi
 fi
 
@@ -625,10 +531,7 @@ if [[ $notrim -eq 0 ]]; then
 	fi
 	#enable dev skip option if already done
 	[[ $Str -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: trimming failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: trimming failed" && return 1
 fi
 
 if [[ $noprep -eq 0 ]]; then
@@ -638,12 +541,10 @@ if [[ $noprep -eq 0 ]]; then
 		for i in $(seq 0 $((${#fastq1[@]}-1))); do
 			o1=$outdir/rawcorrected/$(basename ${fastq1[$i]})
 			o2=$outdir/rawcorrected/$(basename ${fastq2[$i]})
-			if [[ $Scor -eq 0 ]]; then #enable dev skip option if already done
+			#enable dev skip option -Scor if already done
+			if [[ $Scor -eq 0 ]]; then
 				/usr/bin/time -v ${BASH_ALIASES[rcorrector]} -1 ${fastq1[$i]} -2 ${fastq2[$i]} -od $outdir/rawcorrected -t $threads
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: read error correction failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: read error correction failed" && return 1
 				mv ${o1%.*}.cor.fq $o1
 				mv ${o2%.*}.cor.fq $o2
 			fi
@@ -653,12 +554,10 @@ if [[ $noprep -eq 0 ]]; then
 	else
 		for i in $(seq 0 $((${#fastq1[@]}-1))); do
 			o=$outdir/rawcorrected/$(basename ${fastq1[$i]})
-			if [[ $Scor -eq 0 ]]; then #enable dev skip option if already done
+			#enable dev skip option -Scor if already done
+			if [[ $Scor -eq 0 ]]; then
 				/usr/bin/time -v ${BASH_ALIASES[rcorrector]} -s ${fastq1[$i]} -od $outdir/rawcorrected -t $threads
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: read error correction failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: read error correction failed" && return 1
 				mv ${o%.*}.cor.fq $o
 			fi
 			fastq1[$i]=$o
@@ -677,6 +576,7 @@ if [[ $nosmap -eq 0 ]]; then
 	cmd=()
 	if [[ ! -e $genome.segemehl.idx ]]; then
 		[[ $Sms -eq 0 ]] && /usr/bin/time -v ${BASH_ALIASES[segemehl]} -x $genome.segemehl.idx -d $genome || echo "${BASH_ALIASES[segemehl]} -x $genome.segemehl.idx -d $genome"
+		[[ $? -gt 0 ]] && echo ":ERROR: segemehl genome indexing failed" && return 1
 	fi
 	for i in $(seq 0 $((${#fastq1[@]}-1))); do
 		o=$outdir/mapped/segemehl/$(basename ${fastq1[$i]})
@@ -693,12 +593,9 @@ if [[ $nosmap -eq 0 ]]; then
 		fi
 		segemehl+=($o)
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sms if already done
 	[[ $Sms -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: segemehl mapping failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: segemehl mapping failed" && return 1
 fi
 
 if [[ $nobmap -eq 0 ]]; then
@@ -708,6 +605,7 @@ if [[ $nobmap -eq 0 ]]; then
 	cmd=()
 	if [[ ! -e $genome.pac ]]; then 
 		[[ $Smb -eq 0 ]] && /usr/bin/time -v ${BASH_ALIASES[bwa]} index -a bwtsw $genome || echo "${BASH_ALIASES[bwa]} index -a bwtsw $genome"
+		[[ $? -gt 0 ]] && echo ":ERROR: bwa genome indexing failed" && return 1
 	fi
 	readlength=$(head -400 ${fastq1[0]} | awk 'NR%4==2{l+=length($0)}END{printf("%d",l/(NR/4))}')
 	if [[ $readlength -lt 70 ]]; then 
@@ -740,12 +638,9 @@ if [[ $nobmap -eq 0 ]]; then
 			bwa+=($o.all)
 		done
 	fi
-	#enable dev skip option if already done
+	#enable dev skip option -Smb if already done
 	[[ $Smb -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: bwa mapping failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: bwa mapping failed" && return 1
 	cmd=()
 	for i in $(seq 0 $((${#bwa[@]}-1))); do
 		o=${bwa[$i]}
@@ -754,12 +649,9 @@ if [[ $nobmap -eq 0 ]]; then
 		cmd+=("${BASH_ALIASES[samtools]} view -H $o.all > $o.unmapped.sam && ${BASH_ALIASES[samtools]} view -f 4 $o.all >> $o.unmapped.sam\n")
 		bwa[$i]=$o.sam
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Smb if already done
 	[[ $Smb -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: bwa unmapped read extraction failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: bwa unmapped read extraction failed" && return 1
 fi
 
 if [[ $notmap -eq 0 ]]; then
@@ -769,6 +661,7 @@ if [[ $notmap -eq 0 ]]; then
 	cmd=()
 	if [[ ! -e ${genome%.*}.1.bt2 ]]; then
 		[[ $Smt -eq 0 ]] && /usr/bin/time -v ${BASH_ALIASES[bowtie2-build]} --threads $threads --seed 12345 $genome ${genome%.*} || echo "${BASH_ALIASES[bowtie2-build]} --threads $threads --seed 12345 $genome ${genome%.*}"
+		[[ $? -gt 0 ]] && echo ":ERROR: tophat genome indexing failed" && return 1
 	fi
 	for i in $(seq 0 $((${#fastq1[@]}-1))); do
 		o=$outdir/mapped/tophat/$(basename ${fastq1[$i]})
@@ -780,12 +673,9 @@ if [[ $notmap -eq 0 ]]; then
 		fi
 		tophat+=($o.unsorted)
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Smt if already done
 	[[ $Smt -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: tophat mapping failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: tophat mapping failed" && return 1
 fi
 
 	echo ":INFO: create sorted bams"
@@ -808,12 +698,9 @@ fi
 			done
 		fi
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sort if already done
 	[[ $Sort -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: sorting bam failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: sorting bam failed" && return 1
 
 	echo ":INFO: add read group information"
 	cmd=()
@@ -823,27 +710,21 @@ fi
 			cmd+=("${BASH_ALIASES[picard]} AddOrReplaceReadGroups I=$f O=$f.tmp RGID=1 RGLB=lib1 RGPL=illumina RGPU=unit1 RGSM=sample VALIDATION_STRINGENCY=SILENT && mv $f.tmp $f\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Srg if already done
 	[[ $Srg -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: read group modification failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: read group modification failed" && return 1
 
 	echo ":INFO: index bam"
 	cmd=()
 	for r in ${mapper[@]}; do
 		declare -n m=$r
 		for f in ${m[@]}; do
-			cmd+=("${BASH_ALIASES[samtools]} index $f\n")
+			cmd+=("${BASH_ALIASES[samtools]} index $f ${f%.*}.bai\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Srg if already done
 	[[ $Srg -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: indexing bam failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: indexing bam failed" && return 1
 
 	echo ":INFO: remove duplicates"
 	cmd=()
@@ -857,42 +738,30 @@ fi
 			m[$i]=$o
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Srmd if already done
 	[[ $Srmd -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: duplicate removal failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: duplicate removal failed" && return 1
 
 	echo ":INFO: index bam"
 	cmd=()
 	for r in ${mapper[@]}; do
 		declare -n m=$r
 		for f in ${m[@]}; do
-			cmd+=("${BASH_ALIASES[samtools]} index $f\n")
+			cmd+=("${BASH_ALIASES[samtools]} index $f ${f%.*}.bai\n")
 		done
 	done 
-	#enable dev skip option if already done
+	#enable dev skip option -Srmd if already done
 	[[ $Srmd -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: indexing bam failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: indexing bam failed" && return 1
 
 	echo ":INFO: reorder bam"
 	if [[ ! -e ${genome%.*}.dict ]]; then
 		/usr/bin/time -v ${BASH_ALIASES[picard]} CreateSequenceDictionary R=$genome
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: genome dictionary creation failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: genome dictionary creation failed" && return 1
 	fi
 	if [[ ! -e $genome.fai ]]; then
 		/usr/bin/time -v ${BASH_ALIASES[samtools]} faidx $genome
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: genome indexing failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: genome indexing failed" && return 1
 	fi
 	cmd=()
 	for r in ${mapper[@]}; do
@@ -904,12 +773,9 @@ fi
 			m[$i]=$o.reordered.bam
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sreo if already done
 	[[ $Sreo -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: bam reordering failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: bam reordering failed" && return 1
 
 if [[ $norecal -eq 0 ]]; then
 	echo ":INFO: indel error prediction"
@@ -924,12 +790,9 @@ if [[ $norecal -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[gatk]} -T RealignerTargetCreator -nt $threads -R $genome -I $f -o $o -U ALLOW_N_CIGAR_READS\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sret if already done
 	[[ $Sret -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: indel error prediction failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: indel error prediction failed" && return 1
 
 	echo ":INFO: indel error correction"
 	cmd=()
@@ -942,12 +805,9 @@ if [[ $norecal -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[gatk]} -T IndelRealigner -R $genome -targetIntervals $o.intervals -I $f -o $o.torecal.bam -U ALLOW_N_CIGAR_READS\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Srea if already done
 	[[ $Srea -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: indel error correction failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: indel error correction failed" && return 1
 
 	echo ":INFO: base recalibration"
 	cmd=()
@@ -960,12 +820,9 @@ if [[ $norecal -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[gatk]} -T BaseRecalibrator -nct $threads -R $genome -knownSites $genome.vcf -I $o.torecal.bam -o $o.recalreport -U ALLOW_N_CIGAR_READS\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Srec if already done
 	[[ $Srec -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: base recalibration failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: base recalibration failed" && return 1
 
 	cmd=()
 	for r in ${mapper[@]}; do
@@ -978,12 +835,9 @@ if [[ $norecal -eq 0 ]]; then
 			m[$i]=$o.bam
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sprint if already done
 	[[ $Sprint -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: BQSR failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: BQSR failed" && return 1
 fi
 
 if [[ $nohc -eq 0 ]]; then
@@ -999,12 +853,9 @@ if [[ $nohc -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[gatk]} -T HaplotypeCaller -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I $f --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Shc if already done
 	[[ $Shc -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: haplotypecaller failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: haplotypecaller failed" && return 1
 fi
 
 if [[ $nomu -eq 0 ]]; then
@@ -1020,12 +871,9 @@ if [[ $nomu -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[gatk]} -T MuTect2 -dt NONE -baq OFF --min_base_quality_score 0 --max_alternate_alleles 3 --useNewAFCalculator -nct $threads -R $genome -I:tumor $f --artifact_detection_mode --dbsnp $genome.vcf -U ALLOW_N_CIGAR_READS | ${BASH_ALIASES[bcftools]} view -Ou - | ${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both | ${BASH_ALIASES[vcfix]} > $o\n")
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Smu if already done
 	[[ $Smu -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: mutect failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: mutect failed" && return 1
 fi
 
 if [[ $nofb -eq 0 ]]; then 
@@ -1045,13 +893,11 @@ if [[ $nofb -eq 0 ]]; then
 			done
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sfb if already done
 	[[ $Sfb -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: freebayes failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: freebayes failed" && return 1
 
+	#enable dev skip option -Sfb if already done
 	if [[ $Sfb -eq 0 ]]; then
 		for r in ${mapper[@]}; do
 			tmpd=$outdir/tmp/$r
@@ -1063,10 +909,7 @@ if [[ $nofb -eq 0 ]]; then
 				tmp=$tmpd/${o%.*}.freebayes.vcf
 				o=$od/${o%.*}.freebayes.vcf
 				${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: freebayes merge for $r failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: freebayes merge for $r failed" && return 1
 				cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 			done
 		done
@@ -1090,13 +933,11 @@ if [[ $nost -eq 0 ]]; then
 			done
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Sst if already done
 	[[ $Sst -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: samtools failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: samtools failed" && return 1
 
+	#enable dev skip option -Sst if already done
 	if [[ $Sst -eq 0 ]]; then
 		for r in ${mapper[@]}; do
 			tmpd=$outdir/tmp/$r
@@ -1108,10 +949,7 @@ if [[ $nost -eq 0 ]]; then
 				tmp=$tmpd/${o%.*}.samtools.vcf
 				o=$od/${o%.*}.samtools.vcf
 				${BASH_ALIASES[bcftools]} view -h $tmp.1 > $o
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: samtools merge for $r failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: samtools merge for $r failed" && return 1
 				cat $(ls -v $tmp.*) | awk '!/^#/{print}' >> $o
 			done
 		done
@@ -1131,13 +969,11 @@ if [[ $nopp -eq 0 ]]; then
 			cmd+=("${BASH_ALIASES[platypus]} callVariants --logFileName=$o.log --output=$o --refFile=$genome --bamFiles=$f --qdThreshold=0 --minGoodQualBases=0 --minBaseQual=0 --minMapQual=0 --minReads=10 --nCPU=$threads --filterVarsByCoverage=1 --minVarFreq=0.1 --filterDuplicates=1 --rmsmqThreshold=0 --qdThreshold=0 --useEMLikelihoods=1 --hapScoreThreshold=0 --badReadsThreshold=0 --maxVariants 100000 --minPosterior=3\n")			
 		done
 	done
-	#enable dev skip option if already done
+	#enable dev skip option -Spp if already done
 	[[ $Spp -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P 1 -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: platypus failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: platypus failed" && return 1
 
+	#enable dev skip option -Spp if already done
 	if [[ $Spp -eq 0 ]]; then
 		cmd=()
 		for r in ${mapper[@]}; do
@@ -1150,23 +986,18 @@ if [[ $nopp -eq 0 ]]; then
 				tmp=$tmpd/${o%.*}.platypus.vcf
 				o=$od/${o%.*}.platypus.vcf
 				${BASH_ALIASES[bgzip]} -f -@ $threads < $tmp > $tmp.gz
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: platypus fix for $r failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: platypus fix for $r failed" && return 1
 				${BASH_ALIASES[tabix]} -f -p vcf $tmp.gz
 				cmd+=("${BASH_ALIASES[bcftools]} norm -f $genome -c s -m-both $tmp.gz | ${BASH_ALIASES[vcfix]} > $o\n")
 			done
 		done
 		echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {}
-		if [[ $? -gt 0 ]]; then
-			echo ":ERROR: platypus fix failed"
-			return 1
-		fi
+		[[ $? -gt 0 ]] && echo ":ERROR: platypus fix failed" && return 1
 	fi
 fi
 
-if [[ $Smerge -eq 0 ]]; then	
+#enable dev skip option -Smerge if already done
+if [[ $Smerge -eq 0 ]]; then
 	echo ":INFO: merging vcf files"
 	cmd=()
 	for r in ${mapper[@]}; do
@@ -1177,24 +1008,15 @@ if [[ $Smerge -eq 0 ]]; then
 			o=$od/${o%.*}
 			for v in $(ls $o*.vcf | grep -v merged); do
 				${BASH_ALIASES[bgzip]} -f -@ $threads < $v > $v.gz
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: vcf compression for $r failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: vcf compression for $r failed" && return 1
 				${BASH_ALIASES[tabix]} -f -p vcf $v.gz
 			done
 			if [[ $(ls $o*.vcf.gz | grep -v merged | wc -l) -gt 0 ]]; then
 				${BASH_ALIASES[bcftools]} merge --print-header --force-samples $(ls $o*.vcf.gz | grep -v merged) > $o.merged.vcf
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: vcf header merge for $r failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: vcf header merge for $r failed" && return 1
 				sed -i '$ d' $o.merged.vcf
 				${BASH_ALIASES[vcfmerge]} $(ls $o*.vcf | grep -v merged) $(ls $o*.vcf | grep -v merged | perl -F'\.' -ane '{print $F[-2]." "}') >> $o.merged.vcf
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: vcf merge failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: vcf merge failed" && return 1
 			fi
 		done
 	done
@@ -1207,10 +1029,7 @@ if [[ $Smerge -eq 0 ]]; then
 			o=$od/${o%.*}
 			export caller=$(ls $o*.vcf | grep -v merged | head -1 | perl -F'\.' -ane '{print $F[-2]}')
 			perl -lane '$F[7]=join(";",grep {$_=~s/^$ENV[caller]://; } split /;/,$F[7]); $F[7]="." unless $F[7]; print join "\t",@F' $o.merged.vcf > $o.merged.reduced.vcf
-			if [[ $? -gt 0 ]]; then
-				echo ":ERROR: vcf merge reduction for $r failed"
-				return 1
-			fi
+			[[ $? -gt 0 ]] && echo ":ERROR: vcf merge reduction for $r failed" && return 1
 			${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.vcf > $o.merged.vcf.gz
 			${BASH_ALIASES[tabix]} -f -p vcf $o.merged.vcf.gz
 			${BASH_ALIASES[bgzip]} -f -@ $threads < $o.merged.reduced.vcf > $o.merged.reduced.vcf.gz
@@ -1234,17 +1053,15 @@ if [[ $noanno -eq 0 ]]; then
 				i=$(basename $f)
 				o=$od/${i%.*}
 				i=$id/${i%.*}
+				#enable dev skip option -Savar if already done
 				if [[ $Savar -eq 0 ]]; then
 					/usr/bin/time -v ${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/ 2>&1 | tee $outdir/tmp/annovarfiles
-					if [[ $? -gt 0 ]]; then
-						echo ":ERROR: annovar annotation for $r failed"
-						return 1
-					fi
-                    for temp in $(grep -E 'written\s+to' $outdir/tmp/annovarfiles | grep -Eo "$outdir/tmp/[^[:space:],]+" | grep "temp."); do
-                        ot=$(basename $temp)
-                        ot=$o.${ot#*.}
-                        mv $temp $ot
-                    done
+					[[ $? -gt 0 ]] && echo ":ERROR: annovar annotation for $r failed" && return 1
+					for temp in $(grep -E 'written\s+to' $outdir/tmp/annovarfiles | grep -Eo "$outdir/tmp/[^[:space:],]+" | grep "temp."); do
+						ot=$(basename $temp)
+						ot=$o.${ot#*.}
+						mv $temp $ot
+					done
 				else
 					echo -e "${BASH_ALIASES[tableannovar]} -thread $threads -maxgenethread $threads -vcfinput -tempdir $outdir/tmp -outfile $o -otherinfo -buildver hg19 -nastring . -operation g,r,r,r,r,f,f,f,f,f,f -argument '-separate -exonicsplicing -hgvs','','','','','','','','','','' -protocol refGene,tfbsConsSites,wgRna,targetScanS,gwasCatalog,esp6500siv2_all,1000g2015aug_all,exac03,avsnp147,dbnsfp33a,clinvar_20170130 $i.merged.reduced.vcf $tooldir/annovar/humandb/\n"
 				fi
@@ -1263,18 +1080,16 @@ if [[ $noanno -eq 0 ]]; then
 			i=$(basename $f)
 			o=$od/${i%.*}
 			i=$id/${i%.*}
+			#enable dev skip option -Snpeff if already done
 			if [[ $Snpeff -eq 0 ]]; then
 				/usr/bin/time -v ${BASH_ALIASES[snpeff]} ann -nodownload -v -t -lof GRCh37.75 $i.merged.reduced.vcf.gz > $o.annotated.vcf
-				if [[ $? -gt 0 ]]; then
-					echo ":ERROR: snpeff annotation for $r failed"
-					return 1
-				fi
+				[[ $? -gt 0 ]] && echo ":ERROR: snpeff annotation for $r failed" && return 1
 			else
 				echo -e "${BASH_ALIASES[snpeff]} ann -nodownload -v -t -lof GRCh37.75 $i.merged.reduced.vcf.gz > $o.annotated.vcf\n"
 			fi
 			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload -v $tooldir/snpEff/data/clinvar.vcf.gz $o.annotated.vcf > $o.clinvar.vcf\n")
 			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload -v $genome.vcf.gz $o.annotated.vcf > $o.dbsnp.vcf\n")
-			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload  -v $tooldir/snpEff/data/exac.vcf.gz $o.annotated.vcf > $o.exac.vcf\n")
+			cmd+=("${BASH_ALIASES[snpsift]} annotate -noDownload -v $tooldir/snpEff/data/exac.vcf.gz $o.annotated.vcf > $o.exac.vcf\n")
 			cmd+=("${BASH_ALIASES[snpsift]} intervals -noDownload -v -i $o.annotated.vcf $tooldir/snpEff/data/promoter.bed > $o.promoter.vcf\n")
 			cmd+=("${BASH_ALIASES[snpsift]} intervals -noDownload -v -i $o.annotated.vcf $tooldir/snpEff/data/miRNApromoter.bed > $o.miRNApromoter.vcf\n")
 			cmd+=("${BASH_ALIASES[snpsift]} dbnsfp -noDownload -v -db $tooldir/snpEff/data/dbNSFP.txt.gz $o.annotated.vcf > $o.dbnsfp.vcf\n")
@@ -1282,10 +1097,7 @@ if [[ $noanno -eq 0 ]]; then
 		done
 	done
 	[[ $Snpeff -eq 0 ]] && echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {} || echo -e ${cmd[@]}
-	if [[ $? -gt 0 ]]; then
-		echo ":ERROR: snpsift failed"
-		return 1
-	fi
+	[[ $? -gt 0 ]] && echo ":ERROR: snpsift failed" && return 1
 
 	# echo ":INFO: variant annotation - polyphen"
 	# cmd=()
@@ -1293,34 +1105,23 @@ if [[ $noanno -eq 0 ]]; then
 	# 	cmd+=("${BASH_ALIASES[polyphen]} -r $i/$threads $PPH/sets/test.input > $outdir/tmp/test.polyphen.$i\n")
 	# done
 	# echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {}
-	# if [[ $? -gt 0 ]]; then
-	# 	echo ":ERROR: polyphen failed"
-	# 	return 1
-	# fi
 	# cmd=()
 	# for i in $(seq 1 $threads); do 
 	# 	cmd+=("${BASH_ALIASES[weka]} -l $PPH/models/HumDiv.UniRef100.NBd.f11.model $outdir/tmp/test.polyphen.$i > $outdir/tmp/test.polyphenDiv.$i\n")
 	# done
 	# echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {}
-	# if [[ $? -gt 0 ]]; then
-	# 	echo ":ERROR: weka1 failed"
-	# 	return 1
-	# fi
 	# cat $(ls -v $outdir/tmp/test.polyphenDiv.*) > $outdir/tmp/test.polyphenDiv
 	# cmd=()
 	# for i in $(seq 1 $threads); do 
 	# 	cmd+=("${BASH_ALIASES[weka]} -l $PPH/models/HumVar.UniRef100.NBd.f11.model $outdir/tmp/test.polyphen.$i > $outdir/tmp/test.polyphenVar.$i\n")
 	# done
 	# echo -e ${cmd[@]} | /usr/bin/time -v xargs -P $threads -I {} bash -c {}
-	# if [[ $? -gt 0 ]]; then
-	# 	echo ":ERROR: weka2 failed"
-	# 	return 1
-	# fi
 	# cat $(ls -v $outdir/tmp/test.polyphenVar.*) > $outdir/tmp/test.polyphenVar
 fi
 
 	echo ":INFO: fin"
 	sleep 1
+	return 0
 }
 
 ### main
@@ -1353,7 +1154,7 @@ nofb=0
 nopp=0
 noprep=0
 notrim=0
-log=$outdir/run.log
+log=''
 remove=0
 annovar=''
 ### dev opts
@@ -1461,17 +1262,14 @@ for i in $(seq 1 $#); do
 	fi
 done
 
-if [[ $help -gt 0 ]]; then
-	usage
-fi
+[[ $help -gt 0 ]] && usage
 
 rundependencies
-if [[ $? -gt 0 ]]; then
-	exit 1
-fi
+[[ $? -gt 0 ]] && exit 1
 
 if [[ $make ]]; then
-    installdependencies
+	installdependencies
+	[[ $? -gt 0 ]] && exit 1
 	echo ":INFO: installation started. please be patient. check logs via: tail -f $tooldir/install.log"
 	echo '' > $tooldir/install.log
 	if [[ $verbose -gt 0 ]]; then 
@@ -1492,94 +1290,94 @@ if [[ $make ]]; then
 fi
 
 # alias definitions for system calls
-tool=$(ls $tooldir/vcfix.pl)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i all"; exit 1; fi
+tool=$tooldir/vcfix.pl
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i update" && exit 1
 alias vcfix=$tool
 
-tool=$(ls $tooldir/vcfmerge.pl)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i all"; exit 1; fi
+tool=$tooldir/vcfmerge.pl
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i update" && exit 1
 alias vcfmerge=$tool
 
-tool=$(ls $tooldir/Trimmomatic-*/trimmomatic-*.jar | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i trimmomatic"; exit 1; fi
+tool=$(ls -vr $tooldir/Trimmomatic-*/trimmomatic-*.jar | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i trimmomatic" && exit 1
 alias trimmomatic="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 
-tool=$(ls $tooldir/bcftools-*/bcftools | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i bcftools"; exit 1; fi
+tool=$(ls -vr $tooldir/bcftools-*/bcftools | sort -r | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i bcftools" && exit 1
 alias bcftools=$tool
 
-tool=$(ls $tooldir/Rcorrector-*/run_rcorrector.pl | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i rcorrector"; exit 1; fi
+tool=$(ls -vr $tooldir/Rcorrector-*/run_rcorrector.pl | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i rcorrector" && exit 1
 alias rcorrector=$tool
 
-tool=$(ls $tooldir/picard-*/picard.jar | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i picard"; exit 1; fi
+tool=$(ls -vr $tooldir/picard-*/picard.jar | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i picard" && exit 1
 alias picard="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 
-tool=$(ls $tooldir/freebayes/bin/freebayes | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i freebayes"; exit 1; fi
+tool=$(ls -vr $tooldir/freebayes/bin/freebayes | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i freebayes" && exit 1
 alias freebayes=$tool
 
 tool=$tooldir/Platypus-master/bin/Platypus.py
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i platypus"; exit 1; fi
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i platypus" && exit 1
 alias platypus=$tool
 
 tool=$(ls $tooldir/fastx_toolkit-*/built/bin/fastq_quality_converter | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i fastx_toolkit"; exit 1; fi
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i fastx_toolkit" && exit 1
 alias fastq_quality_converter=$tool
 
-tool=$(ls $tooldir/tophat-*/tophat2 | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i tophat"; exit 1; fi
+tool=$(ls -vr $tooldir/tophat-*/tophat2 | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i tophat" && exit 1
 alias tophat2=$tool
 
-tool=$(ls $tooldir/bwa-*/bwa | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i bwa"; exit 1; fi
+tool=$(ls -vr $tooldir/bwa-*/bwa | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i bwa" && exit 1
 alias bwa=$tool
 
-tool=$(ls $tooldir/gatk-*/target/executable/GenomeAnalysisTK.jar | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i gatk"; exit 1; fi
+tool=$(ls -vr $tooldir/gatk-*/target/executable/GenomeAnalysisTK.jar | sort -r | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i gatk" && exit 1
 alias gatk="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 
-tool=$(ls $tooldir/bowtie2-*/bowtie2-build | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i tophat"; exit 1; fi
+tool=$(ls -vr $tooldir/bowtie2-*/bowtie2-build | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i tophat" && exit 1
 alias bowtie2-build=$tool
 
-tool=$(ls $tooldir/segemehl_*/segemehl.x | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i segemehl"; exit 1; fi
+tool=$(ls -vr $tooldir/segemehl_*/segemehl.x | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i segemehl" && exit 1
 alias segemehl=$tool
 
-tool=$(ls $tooldir/samtools*/built/bin/samtools | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i samtools"; exit 1; fi
+tool=$(ls -vr $tooldir/samtools*/built/bin/samtools | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i samtools" && exit 1
 alias samtools=$tool
 
-tool=$(ls $tooldir/samtools*/built/bin/tabix | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i samtools"; exit 1; fi
+tool=$(ls -vr $tooldir/samtools*/built/bin/tabix | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i samtools" && exit 1
 alias tabix=$tool
 
-tool=$(ls $tooldir/samtools*/built/bin/bgzip | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i samtools"; exit 1; fi
+tool=$(ls -vr $tooldir/samtools*/built/bin/bgzip | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i samtools" && exit 1
 alias bgzip=$tool
 
-tool=$(ls $tooldir/FastQC-*/fastqc | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i fastqc"; exit 1; fi
+tool=$(ls -vr $tooldir/FastQC-*/fastqc | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i fastqc" && exit 1
 alias fastqc=$tool
 
-tool=$(ls $tooldir/DNApi-*/dnapi.py | sort -r | head -1)
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i dnapi"; exit 1; fi
+tool=$(ls -vr $tooldir/DNApi-*/dnapi.py | head -1)
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i dnapi" && exit 1
 alias dnapi=$tool
 
 tool=$tooldir/cutadapt/bin/cutadapt
-if [[ -z $tool ]]; then	echo ":ERROR: tool missing - try installation parameter: -i cutadapt"; exit 1; fi
+[[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i cutadapt" && exit 1
 alias cutadapt=$tool
 
 annovar=1
 tool=$tooldir/annovar/table_annovar.pl
-if [[ -z $tool ]]; then	echo ":INFO: no annotation via annovar possible - try installation parameter: -i annovar -annovar <url>"; annovar=0; fi
+[[ -z $tool ]] && echo ":INFO: no annotation via annovar possible - try installation parameter: -i annovar -annovar <url>" && annovar=0
 alias tableannovar=$tool
 alias convert2annovar=$tooldir/annovar/convert2annovar.pl
 
 tool=$tooldir/snpEff/snpEff.jar
-if [[ -z $tool ]]; then	echo ":INFO: no annotation via snpeff possible - try installation parameter: -i snpeff"; noanno=1; fi
+[[ -z $tool ]] && echo ":INFO: no annotation via snpeff possible - try installation parameter: -i snpeff" && noanno=1
 alias snpeff="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 alias snpsift="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tooldir/snpEff/SnpSift.jar"
 
@@ -1597,45 +1395,29 @@ samtools=$(ls -dv $tooldir/samtools-*/ | tail -1)
 export C_INCLUDE_PATH=$samtools/built/include:$C_INCLUDE_PATH
 export LD_LIBRARY_PATH=$samtools/built/lib:$LD_LIBRARY_PATH
 
-if [[ ! $genome ]] || [[ ! $fq1 ]]; then 
-	echo ":ERROR: mandatory parameter missing - call "$(basename $0)" -h for help"
-	exit 1
-fi
-
 cd $pwd
-if [[ ! -e $genome ]]; then
-	echo ":ERROR: genome file does not exists $genome"
-	exit 1
-fi
-if [[ ! -e $genome.vcf ]]; then
-	echo ":ERROR: dbSNP file does not exists $genome.vcf"
-	exit 1
-fi
+[[ ! $log ]] && log=$outdir/run.log
 
-declare -A fastq1
-declare -A fastq2
+[[ ! $(file $genome | grep ASCII) ]] || [[ ! $(file $fq1 | grep ASCII) ]] && echo ":ERROR: mandatory parameter missing - call "$(basename $0)" -h for help" && exit 1
+[[ ! $genome ]] || [[ ! $fq1 ]] && echo ":ERROR: mandatory parameter missing - call "$(basename $0)" -h for help" && exit 1
+[[ ! $(file $genome | grep ASCII) ]] && echo ":ERROR: genome file does not exists or is compressed $genome" && exit 1
+[[ ! $(file $genome.vcf | grep ASCII) ]] && echo ":ERROR: dbSNP file does not exists or is compressed $genome.vcf" && exit 1
+
+fastq1=()
+fastq2=()
 IFS=','
 i=-1
 for f in $fq1; do
-	if [[ ! -e $f ]]; then
-		echo ":ERROR: fastq file does not exists $f"
-		exit 1
-	fi
+	[[ ! $(file $f | grep ASCII) ]] && echo ":ERROR: fastq file does not exists or is compressed $f" && exit 1
 	fastq1[$((i+1))]=$f
 done
 i=-1
 for f in $fq2; do
-	if [[ ! -e $f ]]; then
-		echo ":ERROR: fastq file does not exists $f"
-		exit 1
-	fi
+	[[ ! $(file $f | grep ASCII) ]] && echo ":ERROR: fastq file does not exists or is compressed $f" && exit 1
 	fastq2[$((i+1))]=$f
 done
 unset IFS
-if [[ $fq2 ]] && [[ ${#fastq1[@]} != ${#fastq2[@]} ]]; then 
-	echo ":ERROR: fastq file of read paires missing"
-	exit 1
-fi
+[[ $fq2 ]] && [[ ${#fastq1[@]} != ${#fastq2[@]} ]] && echo ":ERROR: unequal number of input mate pair fastq files" && exit 1
 
 mkdir -p $outdir/tmp/segemehl
 mkdir -p $outdir/tmp/tophat
@@ -1654,12 +1436,10 @@ if [[ ! $adapter ]]; then
 fi
 
 echo ":INFO: pipeline started with $threads threads" | tee $log
+[[ $? -gt 0 ]] && echo ":ERROR: directory for logfile does not exists $log" && exit 1
 echo ":INFO: command: "$(basename $0)" $@" | tee -a $log
 echo ":INFO: check logs via tail -f $log"
-if [[ $? -gt 0 ]]; then
-	echo ":ERROR: directory for logfile does not exists $log"
-	exit 1
-fi
+
 if [[ $verbose -gt 0 ]]; then 
 	pipeline 2>&1 | tee -a $log
 	excode=${PIPESTATUS[0]}
@@ -1676,13 +1456,10 @@ if [[ $excode -gt 0 ]]; then
 else 
 	if [[ $remove -eq 1 ]]; then
 		rm -rf $outdir/tmp
-		ls $outdir/errorcorrected/*/* | grep -v -E 'reordered.(bam|bai)$' | xargs rm -f
+		rm -f $outdir/errorcorrected/*/!(*reordered.bam|*reordered.bai)
 		rm -rf $outdir/mapped/*/logs
-		ls $outdir/mapped/*/* | grep -v -E '(bam|bai|unmapped.*)$' | xargs rm -f
-		ls $outdir/noduplicates/*/* | grep -v -E 'reordered.(bam|bai)$' | xargs rm -f
-		ls $outdir/rawcorrected/* | grep -E '(corrected|merged)$' | xargs rm -f
-		rm -f log.txt
-		rm -f *.bed
+		rm -f $outdir/mapped/*/!(*bam|*bai|*unmapped.sam)
+		rm -f $outdir/noduplicates/*/!(*reordered.bam|*reordered.bai)
 	fi
 	exit 0
 fi

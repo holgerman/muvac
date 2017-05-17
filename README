@@ -1,6 +1,6 @@
 ### INFO
 muvac is a fully multithreaded pipeline to call, merge and annotate germline variants
-- from RAW sequencing data in FastQ format,
+- from RAW sequencing data in uncompressed FastQ format,
 - trimmed using Trimmomatic,
 - corrected using Rcorrector,
 - mapped by Segemehl, TopHat2, BWA,
@@ -18,17 +18,23 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/koriege/muvac/archive/muvac-v0.1.5.zip
+wget https://github.com/koriege/muvac/archive/muvac-v0.1.6.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.5.zip
+unzip muvac-v0.1.6.zip
 7) enter the muvac directory
-cd muvac-0.1.5
+cd muvac-0.1.6
 8) install all tools for variant calling
 ./muvac -i all
 9) (optional) install variant annotation tools for muvac 
 ./muvac -i anno [-t <number>] [-annovar <url>]
 - use '-t <number>' option to run annotation-database indexing on <number> cpu cores (default: all)
 - use '-annovar <url>' as optional option to install Annovar (get download url from here http://annovar.openbioinformatics.org/)
+10) clean up
+cd .. && rm -rf muvac-0.1.6
+
+### UPDATE
+1) follow the INSTALLATION steps 5 to 7
+./muvac -i update
 
 ### DOWNLOAD HG19/GRCh37.p13 and dbSNP vcf
 1) create a genome directory
@@ -37,15 +43,20 @@ mkdir -p $PWD/genomes
 ./dlhg19 $PWD/genomes
 
 ### RUN
+- FIRST RUN INFO: genomes will be indexed for chosen mappers
+=> do not run multiple muvac instances in parallel unless indexes are created
+- make sure to use uncompressed fastq files
 - make sure to have your genome and dbSNP vcf file in the same directory
 - make sure your genome file ends with '.fa' and your dbSNP file ends with '.fa.vcf'
 - make sure the file name prefixes of your genome and dbSNP file are equal (e.g. hg19.fa and hg19.fa.vcf)
 - make sure the fasta headers in your genome are named and sorted this way '>chrM' '>chr1' ... '>chr22' '>chrX' '>chrY'
 => running dlhg19 from the DOWNLOAD section will do this for you
 1) calling for help?
-./muvac -h
+muvac -h
 2) adapt and use the terminal command below
-./muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
+muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
+3) if no adapter clipping is necessary just call muvac this way
+(echo 'n') | muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
 
 ### INFO: RUN
 - a comprehensive log file 'run.log' file will be created in your output directory, unless defined otherwise
@@ -106,6 +117,7 @@ min base quality >= 0
 max variances = all
 downsampling = off
 
-### AUTHOR
-Konstantin Riege
+### REFERENCES
+muvac is free software for non-commercial use
+(c) Konstantin Riege
 konstantin{a}bioinf{.}uni-leipzig{.}de
