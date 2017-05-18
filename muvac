@@ -63,6 +63,8 @@ installdependencies () {
 	[[ $(gcc -v &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: gcc" && return 1
 	[[ $(unzip -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: unzip" && return 1
 	[[ $(python -c 'import Cython.Distutils' &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: cython" && return 1
+	[[ ! -s /usr/include/python2.7/Python.h ]] && echo ":ERROR: dependency missing: python-dev" && return 1
+	[[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]] && echo ":ERROR: dependency missing: java 8" && return 1
 	return 0
 }
 
@@ -1457,7 +1459,7 @@ if [[ ! $adapter ]]; then
 fi
 
 echo ":INFO: pipeline started with $threads threads" | tee $log
-[[ ${PIPESTATUS[0]} -gt 0 ]] && echo ":ERROR: directory for logfile does not exists $log" && exit 1
+[[ $? -gt 0 ]] && echo ":ERROR: directory for logfile does not exists $log" && exit 1
 echo ":INFO: command: "$(basename $0)" $@" | tee -a $log
 echo ":INFO: check logs via tail -f $log"
 
