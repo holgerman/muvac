@@ -10,7 +10,7 @@ muvac is a fully multithreaded pipeline to call, merge and annotate germline var
 ### INSTALLATION
 1) you need to be root to install dependencies, unless already present (to check this go on with step 2)
 sudo apt-get update
-sudo apt-get install cmake install git g++ gcc make openjdk-8-jdk python-dev unzip
+sudo apt-get install cmake git g++ gcc make openjdk-8-jdk python-dev unzip
 2) create a directory for muvac tools installation, which can be changed here (default: $PWD - absolut path of current working directory)
 mkdir -p $PWD/muvactools
 3) create a shell variable MUVAC assigned to your previous defined installation directory
@@ -18,11 +18,11 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/koriege/muvac/archive/muvac-v0.1.6.zip
+wget https://github.com/koriege/muvac/archive/muvac-v0.1.7.zip
 6) extract the downloaded muvac release
-unzip muvac-v0.1.6.zip
+unzip muvac-v0.1.7.zip
 7) enter the muvac directory
-cd muvac-0.1.6
+cd muvac-0.1.7
 8) install all tools for variant calling
 ./muvac -i all
 9) (optional) install variant annotation tools for muvac 
@@ -30,7 +30,7 @@ cd muvac-0.1.6
 - use '-t <number>' option to run annotation-database indexing on <number> cpu cores (default: all)
 - use '-annovar <url>' as optional option to install Annovar (get download url from here http://annovar.openbioinformatics.org/)
 10) clean up
-cd .. && rm -rf muvac-0.1.6
+cd .. && rm -rf muvac-0.1.7
 
 ### UPDATE
 1) follow the INSTALLATION steps 5 to 7
@@ -118,6 +118,5 @@ max variances = all
 downsampling = off
 
 ### REFERENCES
-muvac is free software for non-commercial use
 (c) Konstantin Riege
 konstantin{a}bioinf{.}uni-leipzig{.}de
