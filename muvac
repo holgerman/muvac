@@ -11,7 +11,7 @@ DESCRIPTION
 $(basename $0) is a multiple variant caller and annotation pipeline for germline variants
 
 VERSION
-v0.1.7
+v0.1.8
 
 SYNOPSIS
 $(basename $0) -1 [PATH] -g [PATH] -o [PATH]

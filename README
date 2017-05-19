@@ -18,11 +18,11 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/koriege/muvac/archive/v0.1.7.zip
+wget https://github.com/koriege/muvac/archive/v0.1.8.zip
 6) extract the downloaded muvac release
-unzip v0.1.7.zip
+unzip v0.1.8.zip
 7) enter the muvac directory
-cd muvac-0.1.7
+cd muvac-0.1.8
 8) install all tools for variant calling
 ./muvac -i all
 9) (optional) install variant annotation tools for muvac 
@@ -30,7 +30,7 @@ cd muvac-0.1.7
 - use '-t <number>' option to run annotation-database indexing on <number> cpu cores (default: all)
 - use '-annovar <url>' as optional option to install Annovar (get download url from here http://annovar.openbioinformatics.org/)
 10) clean up
-cd .. && rm -rf muvac-0.1.7
+cd .. && rm -rf muvac-0.1.8
 
 ### UPDATE
 1) follow the INSTALLATION steps 5 to 7
@@ -52,17 +52,17 @@ mkdir -p $PWD/genomes
 - make sure the fasta headers in your genome are named and sorted this way '>chrM' '>chr1' ... '>chr22' '>chrX' '>chrY'
 => running dlhg19 from the DOWNLOAD section will do this for you
 1) calling for help?
-muvac -h
+$MUVAC/muvac -h
 2) adapt and use the terminal command below
-muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
+$MUVAC/muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
 3) if no adapter clipping is necessary just call muvac this way
-(echo 'n') | muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
+(echo 'n') | $MUVAC/muvac -1 R1.fastq -2 R2.fastq -g genomes/hg19.fa -o results -l results/run.log
 
 ### INFO: RUN
 - a comprehensive log file 'run.log' file will be created in your output directory, unless defined otherwise
 - using the verbose option '-v' will additionally print full log to terminals stdout
 - example run for multiple patients data to be processed in parallel
-./muvac -1 patient1_1.fq,patient2_1.fq -2 patient1_2.fq,patient2_2.fq -g genomes/hg19.fa -o results -l results/run.log
+$MUVAC/muvac -1 patient1_1.fq,patient2_1.fq -2 patient1_2.fq,patient2_2.fq -g genomes/hg19.fa -o results -l results/run.log
 
 ### RUN IN BACKGROUND
 1) start a screen with a unique name
