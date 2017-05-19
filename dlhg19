@@ -10,9 +10,8 @@ if [[ -d $dir ]]; then
 		gunzip -c Homo_sapiens.GRCh37.dna.chromosome.$i.fa.gz | sed "s/>.*/>chr$i/" >> hg19.fa
 	done
 	wget ftp://ftp.ncbi.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/VCF/00-common_all.vcf.gz -O hg19.fa.vcf.gz
-	wget ftp://ftp.ncbi.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/VCF/00-common_all.vcf.gz.tbi -O hg19.fa.vcf.gz.tbi
 	echo ":INFO: extracting dbSNP"
-	gunzip -k -c hg19.fa.vcf.gz > hg19.fa.vcf
+	gunzip -c hg19.fa.vcf.gz | sed -r '/^(#|chr)/! s/^(\S+)(.+)/chr\1\2/' > hg19.fa.vcf
 else
 	echo ":ERROR: no such directory $dir"
 fi
