@@ -11,7 +11,7 @@ DESCRIPTION
 $(basename $0) is a multiple variant caller and annotation pipeline for germline variants
 
 VERSION
-v0.1.8
+v0.1.9
 
 SYNOPSIS
 $(basename $0) -1 [PATH] -g [PATH] -o [PATH]
@@ -22,7 +22,7 @@ INSTALLATION OPTIONS
 -annovar | --annovar [url]       : annovar download url (see http://annovar.openbioinformatics.org/)
 
 OPTIONS
--1 | --fastq1 [path,path,..]     : fastq input - single or first pair, comma seperated
+-1 | --fastq1 [path,path,..]     : fastq input - single or first pair, comma seperated 
 -2 | --fastq2 [path,path,..]     : fastq input - optional. second pair, comma seperated
 -g | --genome [path]             : genome fasta with suffix '.fa'
 -a | --adapter [string]          : adapter sequence - optional
@@ -62,6 +62,7 @@ installdependencies () {
 	[[ $(g++ -v &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: g++" && return 1
 	[[ $(gcc -v &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: gcc" && return 1
 	[[ $(unzip -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: unzip" && return 1
+	[[ $(gzip -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: gzip" && return 1
 	[[ $(python -c 'import Cython.Distutils' &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: cython" && return 1
 	[[ ! -s /usr/include/python2.7/Python.h ]] && echo ":ERROR: dependency missing: python-dev" && return 1
 	[[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]] && echo ":ERROR: dependency missing: java 8" && return 1
@@ -70,6 +71,8 @@ installdependencies () {
 
 rundependencies () {
 	[[ $(md5sum --help &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: md5sum" && return 1
+	[[ $(gzip -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: gzip" && return 1
+	[[ $(bzip2 -h &> /dev/null; echo $?) -gt 0 ]] && echo ":ERROR: dependency missing: bzip2" && return 1
 	[[ $(bash -version | head -1 | perl -lane 'if ($_=~/version\s+4\.(\d+)/i){if($1>=3){print 1}else{print 0}}else{print 0}') -eq 0 ]] && echo ":ERROR: dependency missing: bash 4.3" && return 1
 	[[ ! -s /usr/include/python2.7/Python.h ]] && echo ":ERROR: dependency missing: python-dev" && return 1
 	[[ $(java -version 2>&1 | head -1 | grep -c '1.8') -ne 1 ]] && echo ":ERROR: dependency missing: java 8" && return 1
@@ -378,7 +381,7 @@ install () {
 		# ./annotate_variation.pl -buildver hg19 -downdb seq humandb/hg19_seq
 		# ./retrieve_seq_from_fasta.pl humandb/hg19_ensGene.txt -seqdir humandb/hg19_seq -format ensGene -outfile humandb/hg19_ensGeneMrna.fa
 		# ./retrieve_seq_from_fasta.pl humandb/hg19_knownGene.txt -seqdir humandb/hg19_seq -format knownGene -outfile humandb/hg19_knownGeneMrna.fa
-		wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/ensemblToGeneName.txt.gz -O humandb/ensemblToGeneName.txt.gz && gunzip humandb/ensemblToGeneName.txt.gz
+		wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/ensemblToGeneName.txt.gz -O humandb/ensemblToGeneName.txt.gz && gzip -d humandb/ensemblToGeneName.txt.gz
 		# ./annotate_variation.pl -buildver hg19 -downdb cytoBand humandb/
 		# ./annotate_variation.pl -buildver hg19 -downdb genomicSuperDups humandb/ 
 		./annotate_variation.pl -buildver hg19 -downdb -webfrom annovar esp6500siv2_all humandb/
@@ -456,7 +459,7 @@ userlog () {
 
 pipeline () {
 if [[ $noprep -eq 0 ]]; then
-	echo ":INFO: calcultating qualities"
+	echo ":INFO: calculating qualities"
 	mkdir -p $outdir/qualities
 	cmd=()
 	for f in {${fastq1[@]},${fastq2[@]}}; do
@@ -490,8 +493,16 @@ if [[ $noprep -eq 0 ]]; then
 		[[ $? -gt 0 ]] && echo ":ERROR: clipping failed" && return 1
 	fi
 fi
-
-	phred=$(head -400 ${fastq1[0]} | awk '{if(NR%4==0) printf("%s",$0);}' | od -A n -t u1 | awk 'BEGIN{min=100;max=0;}{for(i=1;i<=NF;i++) {if($i>max) max=$i; if($i<min) min=$i;}}END{if(max<=74 && min<59) print "phred33"; else if(max>73 && min>=64) print "phred64"; else if(min>=59 && min<64 && max>73) print "solexa64"; else print "unknown";}')
+	
+	if [[ $(file ${fastq1[0]} | grep compressed) ]]; then
+		if [[ $(file ${fastq1[0]} | grep gzip) ]]; then
+			phred=$(gzip -cd ${fastq1[0]} | head -400 | awk '{if(NR%4==0) printf("%s",$0);}' | od -A n -t u1 | awk 'BEGIN{min=100;max=0;}{for(i=1;i<=NF;i++) {if($i>max) max=$i; if($i<min) min=$i;}}END{if(max<=74 && min<59) print "phred33"; else if(max>73 && min>=64) print "phred64"; else if(min>=59 && min<64 && max>73) print "solexa64"; else print "unknown";}')
+		else
+			phred=$(bzib2 -cd ${fastq1[0]} | head -400 | awk '{if(NR%4==0) printf("%s",$0);}' | od -A n -t u1 | awk 'BEGIN{min=100;max=0;}{for(i=1;i<=NF;i++) {if($i>max) max=$i; if($i<min) min=$i;}}END{if(max<=74 && min<59) print "phred33"; else if(max>73 && min>=64) print "phred64"; else if(min>=59 && min<64 && max>73) print "solexa64"; else print "unknown";}')
+		fi
+	else
+		phred=$(head -400 ${fastq1[0]} | awk '{if(NR%4==0) printf("%s",$0);}' | od -A n -t u1 | awk 'BEGIN{min=100;max=0;}{for(i=1;i<=NF;i++) {if($i>max) max=$i; if($i<min) min=$i;}}END{if(max<=74 && min<59) print "phred33"; else if(max>73 && min>=64) print "phred64"; else if(min>=59 && min<64 && max>73) print "solexa64"; else print "unknown";}')
+	fi
 	[[ ! $phred =~ ^phred ]] && echo ":ERROR: $phred fastq encoding - need sanger (phred33) or illumina (phred64)" && return 1
 	if [[ $phred == "phred64" ]]; then
 		echo ":INFO: converting quality scores"
@@ -499,12 +510,28 @@ fi
 		cmd=()
 		for i in $(seq 0 $((${#fastq1[@]}-1))); do
 			o=$outdir/converted/$(basename ${fastq1[$i]})
-			cmd+=("${BASH_ALIASES[fastq_quality_converter]} -i $f -o $o\n")
+			if [[ $(file $f | grep compressed) ]]; then
+				if [[ $(file $f | grep gzip) ]]; then
+					cmd+=("gzip -cd ${fastq1[$i]} | ${BASH_ALIASES[fastq_quality_converter]} -z -o $o\n")
+				else
+					cmd+=("bzip2 -cd ${fastq1[$i]} | ${BASH_ALIASES[fastq_quality_converter]} -z -o $o\n")
+				fi
+			else
+				cmd+=("${BASH_ALIASES[fastq_quality_converter]} -i ${fastq1[$i]} -o $o\n")
+			fi
 			fastq1[$i]=$o
 		done 
 		for i in $(seq 0 $((${#fastq2[@]}-1))); do
 			o=$outdir/converted/$(basename ${fastq2[$i]})
-			cmd+=("${BASH_ALIASES[fastq_quality_converter]} -i $f -o $o\n")
+			if [[ $(file $f | grep compressed) ]]; then
+				if [[ $(file $f | grep gzip) ]]; then
+					cmd+=("gzip -cd ${fastq2[$i]} | ${BASH_ALIASES[fastq_quality_converter]} -z -o $o\n")
+				else
+					cmd+=("bzip2 -cd ${fastq2[$i]} | ${BASH_ALIASES[fastq_quality_converter]} -z -o $o\n")
+				fi
+			else
+				cmd+=("${BASH_ALIASES[fastq_quality_converter]} -i ${fastq2[$i]} -o $o\n")
+			fi
 			fastq2[$i]=$o
 		done
 		#enable dev skip option -Sconv if already done
@@ -549,8 +576,17 @@ if [[ $noprep -eq 0 ]]; then
 			else
 				/usr/bin/time -v ${BASH_ALIASES[rcorrector]} -1 ${fastq1[$i]} -2 ${fastq2[$i]} -od $outdir/rawcorrected -t $threads
 				[[ $? -gt 0 ]] && echo ":ERROR: read error correction failed" && return 1
-				mv ${o1%.*}.cor.fq $o1
-				mv ${o2%.*}.cor.fq $o2
+				if [[ $(file ${fastq1[$i]} | grep compressed) ]]; then
+					tmp=${o1%.*}
+					tmp=${tmp%.*}
+					mv $tmp.cor.fq.${o1##*.} $o1
+					tmp=${o2%.*}
+					tmp=${tmp%.*}
+					mv $tmp.cor.fq.${o2##*.} $o2
+				else 
+					mv ${o1%.*}.cor.fq $o1
+					mv ${o2%.*}.cor.fq $o2
+				fi
 			fi
 			fastq1[$i]=$o1
 			fastq2[$i]=$o2
@@ -564,7 +600,13 @@ if [[ $noprep -eq 0 ]]; then
 			else
 				/usr/bin/time -v ${BASH_ALIASES[rcorrector]} -s ${fastq1[$i]} -od $outdir/rawcorrected -t $threads
 				[[ $? -gt 0 ]] && echo ":ERROR: read error correction failed" && return 1
-				mv ${o%.*}.cor.fq $o
+				if [[ $(file ${fastq1[$i]} | grep compressed) ]]; then
+					tmp=${o%.*}
+					tmp=${tmp%.*}
+					mv $tmp.cor.fq.${o##*.} $o
+				else 
+					mv ${o%.*}.cor.fq $o
+				fi
 			fi
 			fastq1[$i]=$o
 		done
@@ -590,6 +632,7 @@ if [[ $nosmap -eq 0 ]]; then
 	for i in $(seq 0 $((${#fastq1[@]}-1))); do
 		o=$outdir/mapped/segemehl/$(basename ${fastq1[$i]})
 		o=${o%.*}
+		[[ $(file ${fastq1[$i]} | grep compressed) ]] && o=${o%.*}
 		if [[ $split -eq 0 ]]; then
 			sege="${BASH_ALIASES[segemehl]}"
 		else 
@@ -624,13 +667,16 @@ if [[ $nobmap -eq 0 ]]; then
 		for f in {${fastq1[@]},${fastq2[@]}}; do
 			o=$outdir/mapped/bwa/$(basename $f)
 			o=${o%.*}
+			[[ $(file $f | grep compressed) ]] && o=${o%.*}
 			cmd+=("${BASH_ALIASES[bwa]} aln -t $threads $genome $f > $o.sai\n")
 		done
 		for i in $(seq 0 $((${#fastq1[@]}-1))); do
 			o1=$outdir/mapped/bwa/$(basename ${fastq1[$i]})
 			o1=${o1%.*}	
+			[[ $(file ${fastq1[$i]} | grep compressed) ]] && o1=${o1%.*}
 			o2=$outdir/mapped/bwa/$(basename ${fastq2[$i]})
 			o2=${o2%.*}
+			[[ $(file ${fastq1[$i]} | grep compressed) ]] && o2=${o2%.*}
 			if [[ ${fastq2[0]} ]]; then
 				cmd+=("${BASH_ALIASES[bwa]} sampe $genome $o1.sai $o2.sai ${fastq1[$i]} ${fastq2[$i]} > $o1.all\n")
 			else 
@@ -642,6 +688,7 @@ if [[ $nobmap -eq 0 ]]; then
 		for i in $(seq 0 $((${#fastq1[@]}-1))); do
 			o=$outdir/mapped/bwa/$(basename ${fastq1[$i]})
 			o=${o%.*}	
+			[[ $(file ${fastq1[$i]} | grep compressed) ]] && o=${o%.*}
 			if [[ ${fastq2[0]} ]]; then
 				cmd+=("${BASH_ALIASES[bwa]} mem -M -t $threads $genome ${fastq1[$i]} ${fastq2[$i]} > $o.all\n")
 			else 
@@ -681,6 +728,7 @@ if [[ $notmap -eq 0 ]]; then
 	for i in $(seq 0 $((${#fastq1[@]}-1))); do
 		o=$outdir/mapped/tophat/$(basename ${fastq1[$i]})
 		o=${o%.*}
+		[[ $(file ${fastq1[$i]} | grep compressed) ]] && o=${o%.*}
 		if [[ ${fastq2[0]} ]]; then #platypus dont like mapping ranges over c limits of short int (32767)
 			cmd+=("${BASH_ALIASES[tophat2]} --max-intron-length 30000 --max-segment-intron 30000 --tmp-dir $outdir/tmp/tophat -p $threads -o $outdir/mapped/tophat ${genome%.*} ${fastq1[$i]} ${fastq2[$i]} && mv $outdir/mapped/tophat/accepted_hits.bam $o.unsorted && mv $outdir/mapped/tophat/unmapped.bam $o.unmapped.bam\n")
 		else 
@@ -770,12 +818,12 @@ fi
 	[[ $? -gt 0 ]] && echo ":ERROR: indexing bam failed" && return 1
 
 	echo ":INFO: reorder bam"
-	if [[ ! -s ${genome%.*}.dict ]]; then
+	if [[ $(md5sum $genome | cut -d ' ' -f 1) != '71eddfce325a99cfb8c6d67e1a4508a4' ]] || [[ ! -s ${genome%.*}.dict ]]; then
 		#enable dev skip option -Sreo if already done
 		[[ $Sreo -gt 0 ]] && echo "${BASH_ALIASES[picard]} CreateSequenceDictionary R=$genome" || /usr/bin/time -v ${BASH_ALIASES[picard]} CreateSequenceDictionary R=$genome
 		[[ $? -gt 0 ]] && echo ":ERROR: genome dictionary creation failed" && return 1
 	fi
-	if [[ ! -s $genome.fai ]]; then
+	if [[ $(md5sum $genome | cut -d ' ' -f 1) != '71eddfce325a99cfb8c6d67e1a4508a4' ]] || [[ ! -s $genome.fai ]]; then
 		#enable dev skip option -Sreo if already done
 		[[ $Sreo -gt 0 ]] && echo "${BASH_ALIASES[samtools]} faidx $genome" || /usr/bin/time -v ${BASH_ALIASES[samtools]} faidx $genome
 		[[ $? -gt 0 ]] && echo ":ERROR: genome indexing failed" && return 1
@@ -1436,7 +1484,7 @@ export LD_LIBRARY_PATH=$samtools/built/lib:$LD_LIBRARY_PATH
 cd $pwd
 [[ ! $log ]] && log=$outdir/run.log
 
-[[ ! $(file $genome | grep ASCII) ]] || [[ ! $(file $fq1 | grep ASCII) ]] && echo ":ERROR: mandatory parameter missing - call "$(basename $0)" -h for help" && exit 1
+[[ ! $(file $genome | grep ASCII) ]] || [[ ! $(file $fq1 | grep -E '(ASCII|compressed)') ]] && echo ":ERROR: mandatory parameter missing - call "$(basename $0)" -h for help" && exit 1
 [[ ! $genome ]] || [[ ! $fq1 ]] && echo ":ERROR: mandatory parameter missing - call "$(basename $0)" -h for help" && exit 1
 [[ ! $(file $genome | grep ASCII) ]] && echo ":ERROR: genome file does not exists or is compressed $genome" && exit 1
 [[ ! $(file $genome.vcf | grep ASCII) ]] && echo ":ERROR: dbSNP file does not exists or is compressed $genome.vcf" && exit 1
@@ -1446,12 +1494,12 @@ fastq2=()
 IFS=','
 i=-1
 for f in $fq1; do
-	[[ ! $(file $f | grep ASCII) ]] && echo ":ERROR: fastq file does not exists or is compressed $f" && exit 1
+	[[ ! $(file $f | grep -E '(ASCII|compressed)') ]] && echo ":ERROR: fastq file does not exists $f" && exit 1
 	fastq1[$((i+1))]=$f
 done
 i=-1
 for f in $fq2; do
-	[[ ! $(file $f | grep ASCII) ]] && echo ":ERROR: fastq file does not exists or is compressed $f" && exit 1
+	[[ ! $(file $f | grep -E '(ASCII|compressed)') ]] && echo ":ERROR: fastq file does not exists $f" && exit 1
 	fastq2[$((i+1))]=$f
 done
 unset IFS
@@ -1466,8 +1514,18 @@ if [[ ! $adapter ]]; then
 	read yn
 	if [[ $yn =~ [yY] ]]; then
 		echo ":INFO: suggesting adapter"
-		a=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all ${fastq1[0]})
-		b=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all ${fastq2[0]})
+		if [[ $(file ${fastq1[0]} | grep compressed) ]]; then
+			if [[ $(file ${fastq1[0]} | grep gzip) ]]; then
+				a=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all <(gzip -cd ${fastq1[0]}))
+				b=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all <(gzip -cd ${fastq2[0]}))
+			else
+				a=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all <(bzip2 -cd ${fastq1[0]}))
+				b=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all <(bzip2 -cd ${fastq2[0]}))
+			fi
+		else 
+			a=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all ${fastq1[0]})
+			b=$(${BASH_ALIASES[dnapi]} -k 6:10:2 --show-all ${fastq2[0]})
+		fi
 		echo -e "$a\n$b"
 		exit 0
 	fi

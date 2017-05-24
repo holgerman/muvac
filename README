@@ -1,6 +1,6 @@
 ### INFO
 muvac is a fully multithreaded pipeline to call, merge and annotate germline variants
-- from RAW sequencing data in uncompressed FastQ format,
+- from RAW sequencing data in FastQ format (uncompressed, gzip or bzip2),
 - trimmed using Trimmomatic,
 - corrected using Rcorrector,
 - mapped by Segemehl, TopHat2, BWA,
@@ -18,11 +18,11 @@ export MUVAC=$PWD/muvactools
 4) store the MUVAC variable permanently to ensure that muvac can always find the required tools
 echo "export MUVAC=$MUVAC" >> ~/.bashrc
 5) download the latest muvac release from https://github.com/koriege/muvac/releases
-wget https://github.com/koriege/muvac/archive/v0.1.8.zip
+wget https://github.com/koriege/muvac/archive/v0.1.9.zip
 6) extract the downloaded muvac release
-unzip v0.1.8.zip
+unzip v0.1.9.zip
 7) enter the muvac directory
-cd muvac-0.1.8
+cd muvac-0.1.9
 8) install all tools for variant calling
 ./muvac -i all
 9) (optional) install variant annotation tools for muvac 
@@ -30,7 +30,7 @@ cd muvac-0.1.8
 - use '-t <number>' option to run annotation-database indexing on <number> cpu cores (default: all)
 - use '-annovar <url>' as optional option to install Annovar (get download url from here http://annovar.openbioinformatics.org/)
 10) clean up
-cd .. && rm -rf muvac-0.1.8
+cd .. && rm -rf muvac-0.1.9
 
 ### UPDATE
 1) follow the INSTALLATION steps 5 to 7
@@ -45,7 +45,6 @@ mkdir -p $PWD/genomes
 ### RUN
 - FIRST RUN INFO: genomes will be indexed for chosen mappers
 => do not run multiple muvac instances in parallel unless indexes are created
-- make sure to use uncompressed fastq files
 - make sure to have your genome and dbSNP vcf file in the same directory
 - make sure your genome file ends with '.fa' and your dbSNP file ends with '.fa.vcf'
 - make sure the file name prefixes of your genome and dbSNP file are equal (e.g. hg19.fa and hg19.fa.vcf)
