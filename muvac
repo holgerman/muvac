@@ -1222,7 +1222,8 @@ fq1=''
 fq2=''
 genome=''
 threads=$( (sleep 1; echo 1) | script -e -q -c "stty rows 1000; top -n 2" /dev/null | grep -E 'Cpu[0-9]+' | awk '$3+$5<40{print}' | wc -l)
-memory=$(script -e -q -c "stty rows 1000; top -b -n 1" /dev/null | grep 'KiB Mem' | perl -lane '$_=~/(\d+)\D+(\d+)\D+(\d+)/; printf("%d",($1-$3)/1024/1024)')
+#memory=$(script -e -q -c "stty rows 1000; top -b -n 1" /dev/null | grep 'KiB Mem' | perl -lane '$_=~/(\d+)\D+(\d+)\D+(\d+)/; printf("%d",$2/1024)')
+memory=$(grep -i memavailable /proc/meminfo | awk '{printf("%d",$2/1024)}')
 outdir=$pwd/results
 help=0
 verbose=0
@@ -1386,7 +1387,7 @@ alias vcfmerge=$tool
 
 tool=$(ls -vr $tooldir/Trimmomatic-*/trimmomatic-*.jar | head -1)
 [[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i trimmomatic" && exit 1
-alias trimmomatic="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
+alias trimmomatic="java -Xmx${memory}m -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 
 tool=$(ls -vr $tooldir/bcftools-*/bcftools | sort -r | head -1)
 [[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i bcftools" && exit 1
@@ -1398,7 +1399,7 @@ alias rcorrector=$tool
 
 tool=$(ls -vr $tooldir/picard-*/picard.jar | head -1)
 [[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i picard" && exit 1
-alias picard="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
+alias picard="java -Xmx${memory}m -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 
 tool=$(ls -vr $tooldir/freebayes/bin/freebayes | head -1)
 [[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i freebayes" && exit 1
@@ -1422,7 +1423,7 @@ alias bwa=$tool
 
 tool=$(ls -vr $tooldir/gatk-*/target/executable/GenomeAnalysisTK.jar | sort -r | head -1)
 [[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i gatk" && exit 1
-alias gatk="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
+alias gatk="java -Xmx${memory}m -Djava.io.tmpdir=$outdir/tmp -jar $tool"
 
 tool=$(ls -vr $tooldir/bowtie2-*/bowtie2-build | head -1)
 [[ -z $tool ]] && echo ":ERROR: tool missing - try installation parameter: -i tophat" && exit 1
@@ -1464,8 +1465,8 @@ alias convert2annovar=$tooldir/annovar/convert2annovar.pl
 
 tool=$tooldir/snpEff/snpEff.jar
 [[ -z $tool ]] && echo ":INFO: no annotation via snpeff possible - try installation parameter: -i snpeff" && noanno=1
-alias snpeff="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tool"
-alias snpsift="java -Xmx${memory}g -Djava.io.tmpdir=$outdir/tmp -jar $tooldir/snpEff/SnpSift.jar"
+alias snpeff="java -Xmx${memory}m -Djava.io.tmpdir=$outdir/tmp -jar $tool"
+alias snpsift="java -Xmx${memory}m -Djava.io.tmpdir=$outdir/tmp -jar $tooldir/snpEff/SnpSift.jar"
 
 # tool=$(ls $tooldir/polyphen-*/bin/run_pph.pl)
 # if [[ -z $tool ]]; then	echo ":INFO: no annotation possible - try installation parameter: -i polyphen"; noanno=1; fi
